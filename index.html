@@ -62,7 +62,7 @@
       <section id="view-notes" class="view-page"></section>
     </main>
 
-    <!-- Navegación Inferior (Móvil) -->
+    <!-- Navegación Inferior (Móvil) con botón de Ajustes incluido -->
     <nav class="mobile-nav">
       <button class="mobile-link active" data-view="today">
         <i data-lucide="layout-grid"></i>
@@ -79,6 +79,10 @@
       <button class="mobile-link" data-view="notes">
         <i data-lucide="file-text"></i>
         <span>Notas</span>
+      </button>
+      <button class="mobile-link" onclick="window.openSettings()">
+        <i data-lucide="settings"></i>
+        <span>Ajustes</span>
       </button>
     </nav>
 
