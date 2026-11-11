@@ -1,311 +1,107 @@
 <!DOCTYPE html>
-<html lang="es" data-theme="light">
+<html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Myself — Agenda Personal</title>
-
-  <!-- Configuración PWA -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Myself — Workspace PC</title>
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#0066ff">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="apple-touch-icon" href="icons/icon-192.png">
-
-  <!-- Estilos base -->
   <link rel="stylesheet" href="css/variables.css">
   <link rel="stylesheet" href="css/base.css">
   <link rel="stylesheet" href="css/layout.css">
   <link rel="stylesheet" href="css/components.css">
-
-  <!-- Lucide Icons -->
-  <script src="https://unpkg.com/lucide@latest"></script>
-
-  <!-- ESTILOS CRÍTICOS INYECTADOS (Bypassea cualquier caché de CSS) -->
-  <style>
-    @media (max-width: 768px) {
-      /* 1. Prevenir zoom automático en campos */
-      input, select, textarea, button {
-        font-size: 16px !important;
-        touch-action: manipulation;
-        -webkit-tap-highlight-color: transparent;
-      }
-
-      /* 2. Área principal con margen para no tapar contenido */
-      .main-content {
-        padding: 16px 16px 90px 16px !important;
-        overflow-x: auto !important;
-        -webkit-overflow-scrolling: touch;
-      }
-
-      /* 3. FORZAR BARRA INFERIOR DE 5 BOTONES */
-      .mobile-nav {
-        display: grid !important;
-        grid-template-columns: repeat(5, 1fr) !important;
-        position: fixed !important;
-        bottom: 0 !important;
-        left: 0 !important;
-        right: 0 !important;
-        height: 64px !important;
-        background: var(--bg-surface, #ffffff) !important;
-        border-top: 1px solid var(--border-color, #e5e7eb) !important;
-        align-items: center !important;
-        padding-bottom: env(safe-area-inset-bottom) !important;
-        z-index: 1000 !important;
-        box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.05) !important;
-      }
-
-      .mobile-link {
-        display: flex !important;
-        flex-direction: column !important;
-        align-items: center !important;
-        justify-content: center !important;
-        gap: 3px !important;
-        background: none !important;
-        border: none !important;
-        color: var(--text-muted, #6b7280) !important;
-        font-size: 0.70rem !important;
-        font-weight: 500 !important;
-        padding: 6px 0 !important;
-        width: 100% !important;
-        min-width: 0 !important;
-        cursor: pointer !important;
-      }
-
-      .mobile-link.active {
-        color: var(--accent-primary, #0066ff) !important;
-        font-weight: 700 !important;
-      }
-
-      .mobile-link svg, .mobile-link i {
-        width: 22px !important;
-        height: 22px !important;
-        display: block !important;
-      }
-
-      /* 4. FAB BOTÓN (+) POSICIONADO CORRECTAMENTE */
-      .fab-button {
-        position: fixed !important;
-        bottom: calc(76px + env(safe-area-inset-bottom)) !important;
-        right: 20px !important;
-        width: 56px !important;
-        height: 56px !important;
-        border-radius: 50% !important;
-        z-index: 999 !important;
-      }
-
-      /* 5. CALENDARIO: SCROLL HORIZONTAL Y HORAS FIJAS */
-      #view-today, #view-calendar, .week-view-container {
-        overflow-x: auto !important;
-        -webkit-overflow-scrolling: touch;
-        width: 100% !important;
-      }
-
-      .week-grid, .calendar-table, .schedule-grid {
-        min-width: 650px !important;
-        position: relative !important;
-      }
-
-      .hours-column, .time-sidebar {
-        position: sticky !important;
-        left: 0 !important;
-        background-color: var(--bg-surface, #ffffff) !important;
-        z-index: 10 !important;
-        box-shadow: 2px 0 5px rgba(0,0,0,0.05) !important;
-      }
-
-      .day-column, .time-slot, .hour-cell {
-        position: relative !important;
-        overflow: hidden !important;
-      }
-
-      /* 6. MODALES ESTILO BOTTOM SHEET */
-      .modal-backdrop {
-        display: flex !important;
-        align-items: flex-end !important;
-        padding: 0 !important;
-      }
-
-      .modal-container {
-        width: 100% !important;
-        max-width: 100% !important;
-        border-radius: 20px 20px 0 0 !important;
-        max-height: 85vh !important;
-        overflow-y: auto !important;
-      }
-    }
-  </style>
 </head>
 <body>
-
-  <div id="app" class="app-layout">
-    <!-- Navegación Lateral (Escritorio) -->
-    <aside class="sidebar">
-      <div class="brand">
-        <i data-lucide="sun" class="brand-icon"></i>
-        <span>Myself</span>
+  <div class="app-container">
+    <!-- Encabezado Principal -->
+    <header class="app-header">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <h1 style="font-size: 1.25rem; font-weight: 800; color: var(--accent-primary, #2563eb);">Myself</h1>
+        <span style="font-size: 0.8rem; background: #e0e7ff; color: #3730a3; padding: 2px 8px; border-radius: 12px; font-weight: 600;">PC Edition</span>
       </div>
-      <nav class="nav-menu">
-        <button class="nav-link active" data-view="today">
-          <i data-lucide="layout-grid"></i> <span>Semana</span>
-        </button>
-        <button class="nav-link" data-view="calendar">
-          <i data-lucide="calendar"></i> <span>Calendario</span>
-        </button>
-        <button class="nav-link" data-view="tasks">
-          <i data-lucide="check-square"></i> <span>Tareas</span>
-        </button>
-        <button class="nav-link" data-view="notes">
-          <i data-lucide="file-text"></i> <span>Notas</span>
-        </button>
-      </nav>
-      <div class="sidebar-footer" style="display: flex; gap: 8px;">
-        <button id="theme-toggle" class="icon-button" title="Cambiar tema">
-          <i data-lucide="moon"></i>
-        </button>
-        <button id="btn-desktop-settings" class="icon-button" title="Ajustes">
-          <i data-lucide="settings"></i>
-        </button>
-      </div>
-    </aside>
 
-    <!-- Áreas de Contenido (Vistas SPA) -->
-    <main class="main-content">
-      <section id="view-today" class="view-page active"></section>
-      <section id="view-calendar" class="view-page"></section>
-      <section id="view-tasks" class="view-page"></section>
-      <section id="view-notes" class="view-page"></section>
-    </main>
-
-    <!-- Navegación Inferior (Móvil) - 5 Botones Distribuidos -->
-    <nav class="mobile-nav">
-      <button class="mobile-link active" data-view="today">
-        <i data-lucide="layout-grid"></i>
-        <span>Semana</span>
-      </button>
-      <button class="mobile-link" data-view="calendar">
-        <i data-lucide="calendar"></i>
-        <span>Agenda</span>
-      </button>
-      <button class="mobile-link" data-view="tasks">
-        <i data-lucide="check-square"></i>
-        <span>Tareas</span>
-      </button>
-      <button class="mobile-link" data-view="notes">
-        <i data-lucide="file-text"></i>
-        <span>Notas</span>
-      </button>
-      <button id="btn-mobile-settings" class="mobile-link" type="button">
-        <i data-lucide="settings"></i>
-        <span>Ajustes</span>
-      </button>
-    </nav>
-
-    <!-- Botón Flotante Acción Rápida (+) -->
-    <button id="fab-add" class="fab-button" aria-label="Añadir">
-      <i data-lucide="plus"></i>
-    </button>
-  </div>
-
-  <!-- Modal Unificado de Creación -->
-  <div id="quick-modal" class="modal-backdrop hidden">
-    <div class="modal-container">
-      <header class="modal-header">
-        <div class="tab-selector">
-          <button class="tab-btn active" data-tab="task">Tarea / Rutina</button>
-          <button class="tab-btn" data-tab="note">Nota</button>
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <button id="btn-today" class="btn-today" style="padding: 8px 16px; border-radius: 8px; border: 1px solid #cbd5e1; background: #fff; cursor: pointer; font-weight: 600;">Hoy (T)</button>
+        <div style="display: flex; gap: 4px;">
+          <button id="btn-prev-week" class="btn-prev" style="padding: 8px 12px; border-radius: 8px; border: 1px solid #cbd5e1; background: #fff; cursor: pointer;">←</button>
+          <button id="btn-next-week" class="btn-next" style="padding: 8px 12px; border-radius: 8px; border: 1px solid #cbd5e1; background: #fff; cursor: pointer;">→</button>
         </div>
-        <button class="close-modal"><i data-lucide="x"></i></button>
-      </header>
-      <div class="modal-body">
-        <form id="quick-form"></form>
+        <button id="btn-add-task" class="btn-add" style="padding: 8px 16px; border-radius: 8px; background: #2563eb; color: #fff; border: none; cursor: pointer; font-weight: 600;">+ Nueva Tarea (N)</button>
+        <button id="btn-open-settings" style="padding: 8px 12px; border-radius: 8px; border: 1px solid #cbd5e1; background: #fff; cursor: pointer;">⚙️</button>
       </div>
-    </div>
-  </div>
+    </header>
 
-  <!-- Modal de Ajustes y Backup -->
-  <div id="settings-modal" class="modal-backdrop hidden">
-    <div class="modal-container">
-      <header class="modal-header">
-        <h2 style="font-size: 1.2rem; font-weight: 700;">Ajustes y Datos</h2>
-        <button id="close-settings-modal" class="close-modal"><i data-lucide="x"></i></button>
-      </header>
-      <div class="modal-body" style="display: flex; flex-direction: column; gap: 16px;">
-        <div>
-          <h3 style="font-size: 0.95rem; font-weight: 600; margin-bottom: 4px;">Copias de Seguridad</h3>
-          <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 12px;">
-            Guarda tus datos en un archivo JSON local o restaura una copia anterior de Myself.
-          </p>
-          <div style="display: flex; gap: 8px;">
-            <button id="btn-export-json" class="btn-primary" style="background: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border-color);">
-              <i data-lucide="download" style="width: 16px; height: 16px; vertical-align: -2px;"></i> Exportar JSON
-            </button>
-            <label class="btn-primary" style="background: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border-color); text-align: center; cursor: pointer;">
-              <i data-lucide="upload" style="width: 16px; height: 16px; vertical-align: -2px;"></i> Importar JSON
-              <input type="file" id="input-import-json" accept=".json" style="display: none;">
-            </label>
+    <!-- Contenedor Multipanel 2 Columnas -->
+    <div class="main-content-wrapper">
+      
+      <!-- COLUMNA IZQUIERDA: Calendario Semanal -->
+      <main class="calendar-main-column">
+        <div class="week-grid-wrapper">
+          <div id="calendar-grid" class="week-grid">
+            <!-- Se renderiza dinámicamente desde JS -->
+          </div>
+        </div>
+      </main>
+
+      <!-- COLUMNA DERECHA: Panel Lateral Permanente (Solo PC) -->
+      <aside class="desktop-side-panel">
+        
+        <!-- 1. Guía de Atajos de Teclado -->
+        <div class="side-card" style="background: #eff6ff; border-color: #bfdbfe;">
+          <div class="side-card-title" style="color: #1e40af; margin-bottom: 8px;">
+            ⌨️ Atajos de Teclado
+          </div>
+          <div style="font-size: 0.8rem; color: #1e3a8a; display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+            <span><kbd>N</kbd> Nueva Tarea</span>
+            <span><kbd>T</kbd> Ir a Hoy</span>
+            <span><kbd>←</kbd> Sem. Anterior</span>
+            <span><kbd>→</kbd> Sem. Siguiente</span>
+            <span><kbd>Esc</kbd> Cerrar Modal</span>
           </div>
         </div>
 
-        <hr style="border: none; border-top: 1px solid var(--border-color);">
-
-        <div>
-          <h3 style="font-size: 0.95rem; font-weight: 600; margin-bottom: 4px;">Notificaciones</h3>
-          <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 8px;">
-            Activa las notificaciones del navegador para avisos locales.
-          </p>
-          <button id="btn-enable-notifications" class="btn-primary" style="background: var(--accent-primary);">
-            Activar Notificaciones
-          </button>
+        <!-- 2. Bloc de Notas Rápido con Autoguardado -->
+        <div class="side-card">
+          <div class="side-card-title">
+            📝 Bloc de Notas Rápido
+            <span id="notes-saved-status" style="font-size: 0.75rem; color: #10b981; opacity: 0; transition: opacity 0.3s; font-weight: 600;">Guardado</span>
+          </div>
+          <textarea id="desktop-quick-notes" class="quick-notes-area" placeholder="Escribe notas, enlaces o pendientes rápidos aquí..."></textarea>
         </div>
+
+        <!-- 3. Tareas Pendientes del Día -->
+        <div class="side-card">
+          <div class="side-card-title">
+            📌 Pendientes Rápidos
+          </div>
+          <div id="side-pending-list" style="display: flex; flex-direction: column; gap: 8px; font-size: 0.85rem; color: #64748b;">
+            <p>No hay tareas pendientes en esta vista.</p>
+          </div>
+        </div>
+
+      </aside>
+    </div>
+  </div>
+
+  <!-- Modal de Ajustes -->
+  <div id="modal-settings" class="modal-backdrop hidden">
+    <div class="modal-content">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+        <h2 style="font-size:1.2rem; font-weight:700;">Ajustes de Myself</h2>
+        <button id="btn-close-settings" style="background:none; border:none; font-size:1.2rem; cursor:pointer;">✕</button>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <button id="btn-export-json" style="padding:10px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; cursor:pointer;">💾 Exportar Copia de Seguridad (JSON)</button>
+        <label style="padding:10px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; cursor:pointer; text-align:center;">
+          📂 Importar Copia de Seguridad (JSON)
+          <input type="file" id="input-import-json" accept=".json" style="display:none;">
+        </label>
+        <button id="btn-enable-notifications" style="padding:10px; border-radius:8px; background:#2563eb; color:#fff; border:none; cursor:pointer;">🔔 Activar Notificaciones Locales</button>
       </div>
     </div>
   </div>
 
-  <!-- App Principal JS -->
-  <script type="module" src="js/app.js"></script>
-
-  <!-- Script de Controladores e Iconos (Con Renderizado de Iconos Garantizado) -->
-  <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      // 1. Renderizar Iconos Lucide
-      if (window.lucide) {
-        window.lucide.createIcons();
-      }
-
-      // 2. Manejador para el Modal de Ajustes
-      const modalSettings = document.getElementById('settings-modal');
-      const btnMobile = document.getElementById('btn-mobile-settings');
-      const btnDesktop = document.getElementById('btn-desktop-settings');
-      const btnClose = document.getElementById('close-settings-modal');
-
-      const openModal = (e) => {
-        if (e) { e.preventDefault(); e.stopPropagation(); }
-        if (modalSettings) modalSettings.classList.remove('hidden');
-      };
-
-      const closeModal = () => {
-        if (modalSettings) modalSettings.classList.add('hidden');
-      };
-
-      if (btnMobile) btnMobile.addEventListener('click', openModal);
-      if (btnDesktop) btnDesktop.addEventListener('click', openModal);
-      if (btnClose) btnClose.addEventListener('click', closeModal);
-    });
-  </script>
-
-  <!-- Service Worker: Limpieza de caché antigua -->
-  <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js')
-          .then(reg => {
-            // Fuerza la actualización del SW en cada carga si hay cambios
-            reg.update();
-          })
-          .catch(err => console.error('Error Service Worker:', err));
-      });
-    }
-  </script>
+  <!-- Iconos Lucide y Lógica Principal -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="js/app.js"></script>
 </body>
 </html>
