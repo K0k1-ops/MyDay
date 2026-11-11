@@ -21,6 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
   renderizarCalendario();
   renderizarHabitualesSidebar();
   autoScrollAHoraActual();
+  inicializarPaletaComandos();
 
   // Actualizar la línea de hora actual cada 30 segundos
   setInterval(() => {
@@ -124,6 +125,7 @@ document.addEventListener('DOMContentLoaded', () => {
       clearTimeout(timeoutSave);
       timeoutSave = setTimeout(() => {
         localStorage.setItem('myday_quick_notes', quickNotesArea.value);
+        autosaveAlServidor();
         if (notesStatus) {
           notesStatus.style.opacity = '1';
           setTimeout(() => { notesStatus.style.opacity = '0'; }, 2000);
@@ -188,6 +190,7 @@ document.addEventListener('DOMContentLoaded', () => {
               }
             });
           }
+          autosaveAlServidor();
           alert('¡Sincronización completada!');
           window.location.reload();
         } catch (err) {
@@ -209,8 +212,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
   configurarModalTareaForm();
   configurarModalHabitualForm();
-  iniciarComprobadorNotificaciones();
 });
+
+// =======================================================
+// AUTO-GUARDADO AL SERVIDOR LOCAL (PYTHON API)
+// =======================================================
+function autosaveAlServidor() {
+  const backupData = {
+    version: '11.0',
+    timestamp: new Date().toISOString(),
+    myday_tasks: localStorage.getItem('myday_tasks') || '[]',
+    myday_habitual: localStorage.getItem('myday_habitual') || '[]',
+    myday_quick_notes: localStorage.getItem('myday_quick_notes') || '',
+    myday_theme: localStorage.getItem('myday_theme') || 'light'
+  };
+
+  fetch('/api/save', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(backupData)
+  })
+  .then(res => res.json())
+  .then(data => console.log('📁 Auto-guardado en myself_backup.json:', data))
+  .catch(err => console.warn('Servidor sin endpoint POST (asegúrate de usar python3 server.py):', err));
+}
 
 // =======================================================
 // MODO NOCHE & FILTROS
@@ -223,6 +248,7 @@ function inicializarTema() {
 function aplicarTema(tema) {
   document.documentElement.setAttribute('data-theme', tema);
   localStorage.setItem('myday_theme', tema);
+  autosaveAlServidor();
   const btnTheme = document.getElementById('btn-theme-toggle');
   if (btnTheme) {
     btnTheme.innerText = tema === 'dark' ? '☀️' : '🌙';
@@ -258,7 +284,6 @@ function autoScrollAHoraActual() {
 }
 
 function renderizarIndicadorHoraActual() {
-  // Eliminar indicador previo
   const prevLine = document.querySelector('.current-time-line');
   if (prevLine) prevLine.remove();
 
@@ -457,7 +482,6 @@ function renderizarCalendario() {
         const rect = dayColumn.getBoundingClientRect();
         const offsetY = e.clientY - rect.top;
 
-        // Calcular minuto exacto y redondear al tramo de 15 minutos más cercano
         let dropMin = minInicioGrid + offsetY;
         dropMin = Math.round(dropMin / 15) * 15;
 
@@ -485,6 +509,7 @@ function renderizarCalendario() {
             tList[idx].endTime = newEndStr;
             tList[idx].time = newStartStr;
             localStorage.setItem('myday_tasks', JSON.stringify(tList));
+            autosaveAlServidor();
             renderizarCalendario();
           }
         } else if (payload.type === 'habitual') {
@@ -494,6 +519,7 @@ function renderizarCalendario() {
             hList[idx].startTime = newStartStr;
             hList[idx].endTime = newEndStr;
             localStorage.setItem('myday_habitual', JSON.stringify(hList));
+            autosaveAlServidor();
             renderizarHabitualesSidebar();
             renderizarCalendario();
           }
@@ -583,13 +609,11 @@ function renderizarCalendario() {
         item.style.top = `${topPx}px`;
         item.style.height = `${heightPx}px`;
 
-        // Posicionamiento horizontal por colisión
         const widthPct = 100 / ev.totalCols;
         const leftPct = widthPct * ev.colIndex;
         item.style.left = `calc(${leftPct}% + 2px)`;
         item.style.width = `calc(${widthPct}% - 4px)`;
 
-        // HABILITAR DRAG AND DROP EN LA TARJETA
         item.setAttribute('draggable', 'true');
         item.addEventListener('dragstart', (e) => {
           e.dataTransfer.setData('text/plain', JSON.stringify({
@@ -606,7 +630,6 @@ function renderizarCalendario() {
         const prefix = ev.type === 'habitual' ? '🔄' : (ev.category === 'estudios' ? '📚' : '👤');
         const isChecked = ev.completed ? '✓' : '';
 
-        // ESTRUCTURA CON BOTÓN DE COMPLETAR EN 1 CLIC
         item.innerHTML = `
           <div style="display:flex; align-items:center; gap:4px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
             ${ev.type === 'task' ? `<span class="task-check-btn" title="Completar">${isChecked}</span>` : ''}
@@ -615,7 +638,6 @@ function renderizarCalendario() {
           <div style="font-size:0.7rem; opacity:0.9; margin-top:2px;">${ev.startTime} - ${ev.endTime}</div>
         `;
 
-        // Evento para el botón rápido de completado
         const checkBtn = item.querySelector('.task-check-btn');
         if (checkBtn) {
           checkBtn.onclick = (e) => {
@@ -625,6 +647,7 @@ function renderizarCalendario() {
             if (idx !== -1) {
               tList[idx].completed = !tList[idx].completed;
               localStorage.setItem('myday_tasks', JSON.stringify(tList));
+              autosaveAlServidor();
               renderizarCalendario();
             }
           };
@@ -644,7 +667,6 @@ function renderizarCalendario() {
     gridBody.appendChild(dayColumn);
   });
 
-  // Renderizar la línea roja de hora actual si el día de hoy es visible
   renderizarIndicadorHoraActual();
 }
 
@@ -774,6 +796,7 @@ function configurarModalHabitualForm() {
       }
 
       localStorage.setItem('myday_habitual', JSON.stringify(habituales));
+      autosaveAlServidor();
       cerrar();
       renderizarHabitualesSidebar();
       renderizarCalendario();
@@ -789,6 +812,7 @@ function configurarModalHabitualForm() {
       habituales = habituales.filter(h => h.id !== id);
 
       localStorage.setItem('myday_habitual', JSON.stringify(habituales));
+      autosaveAlServidor();
       cerrar();
       renderizarHabitualesSidebar();
       renderizarCalendario();
@@ -898,24 +922,22 @@ function configurarModalTareaForm() {
       e.preventDefault();
       const id = document.getElementById('task-id').value;
       const title = document.getElementById('task-title-input').value.trim();
-      const category = document.getElementById('task-category-input').value;
+      const category = document.getElementById('task-category-input') ? document.getElementById('task-category-input').value : 'personal';
       const date = document.getElementById('task-date-input').value;
       const startTime = document.getElementById('task-start-input').value;
       const endTime = document.getElementById('task-end-input').value;
 
-      if (!title) return;
+      if (!title || !date) {
+        alert('Por favor introduce un título y una fecha.');
+        return;
+      }
 
       let tareas = JSON.parse(localStorage.getItem('myday_tasks') || '[]');
 
       if (id) {
         const idx = tareas.findIndex(t => t.id === id);
         if (idx !== -1) {
-          tareas[idx].title = title;
-          tareas[idx].category = category;
-          tareas[idx].date = date;
-          tareas[idx].startTime = startTime;
-          tareas[idx].endTime = endTime;
-          tareas[idx].time = startTime;
+          tareas[idx] = { ...tareas[idx], title, category, date, startTime, endTime, time: startTime };
         }
       } else {
         tareas.push({
@@ -931,6 +953,7 @@ function configurarModalTareaForm() {
       }
 
       localStorage.setItem('myday_tasks', JSON.stringify(tareas));
+      autosaveAlServidor();
       cerrarModal();
       renderizarCalendario();
     };
@@ -945,6 +968,7 @@ function configurarModalTareaForm() {
       tareas = tareas.filter(t => t.id !== id);
 
       localStorage.setItem('myday_tasks', JSON.stringify(tareas));
+      autosaveAlServidor();
       cerrarModal();
       renderizarCalendario();
     };
@@ -952,42 +976,106 @@ function configurarModalTareaForm() {
 }
 
 // =======================================================
-// COMPROBADOR DE NOTIFICACIONES
+// PALETA DE COMANDOS FLOTANTE (CTRL + K)
 // =======================================================
-function iniciarComprobadorNotificaciones() {
-  setInterval(() => {
-    if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
-    const ahora = new Date();
-    const horaActual = `${String(ahora.getHours()).padStart(2, '0')}:${String(ahora.getMinutes()).padStart(2, '0')}`;
-    const hoyStr = ahora.toISOString().slice(0, 10);
-    const dayOfWeekStr = String(ahora.getDay());
+function inicializarPaletaComandos() {
+  if (document.getElementById('command-palette-backdrop')) return;
 
+  const paletteContainer = document.createElement('div');
+  paletteContainer.id = 'command-palette-backdrop';
+  paletteContainer.className = 'modal-backdrop hidden';
+  paletteContainer.innerHTML = `
+    <div class="command-palette-modal" style="background:var(--bg-primary, #1e1e1e); border:1px solid var(--border-color, #444); border-radius:12px; width:90%; max-width:550px; margin:10vh auto; padding:16px; box-shadow:0 20px 40px rgba(0,0,0,0.5); color:var(--text-primary, #ffffff); position:relative;">
+      
+      <!-- CABECERA DE LA PALETA CON BOTÓN DE CIERRE (X) -->
+      <div style="display:flex; align-items:center; gap:10px; border-bottom:1px solid var(--border-color, #333); padding-bottom:10px;">
+        <span style="font-size:1.2rem;">🔍</span>
+        <input type="text" id="cmd-input" placeholder="Buscar tarea, rutina o comando..." style="width:100%; border:none; outline:none; background:transparent; font-size:1rem; color:inherit;" />
+        <kbd style="font-size:0.75rem; background:var(--bg-secondary, #333); color:var(--text-primary, #fff); padding:2px 6px; border-radius:4px;">ESC</kbd>
+        
+        <!-- CRUZ DE CERRAR -->
+        <button id="cmd-btn-close" type="button" style="background:transparent; border:none; color:var(--text-secondary, #aaa); font-size:1.4rem; cursor:pointer; padding:0 4px; line-height:1;" title="Cerrar (Esc)">&times;</button>
+      </div>
+
+      <!-- LISTA DE RESULTADOS -->
+      <div id="cmd-results" style="max-height:300px; overflow-y:auto; margin-top:10px; display:flex; flex-direction:column; gap:6px;">
+      </div>
+    </div>
+  `;
+  document.body.appendChild(paletteContainer);
+
+  const backdrop = document.getElementById('command-palette-backdrop');
+  const input = document.getElementById('cmd-input');
+  const results = document.getElementById('cmd-results');
+  const btnClose = document.getElementById('cmd-btn-close');
+
+  const abrirPaleta = () => {
+    backdrop.classList.remove('hidden');
+    input.value = '';
+    renderResultados('');
+    setTimeout(() => input.focus(), 50);
+  };
+
+  const cerrarPaleta = () => {
+    backdrop.classList.add('hidden');
+  };
+
+  // Botón X de cerrar
+  if (btnClose) {
+    btnClose.onclick = (e) => {
+      e.stopPropagation();
+      cerrarPaleta();
+    };
+  }
+
+  // Cerrar al pulsar Ctrl + K de nuevo
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+      e.preventDefault();
+      if (backdrop.classList.contains('hidden')) abrirPaleta();
+      else cerrarPaleta();
+    }
+  });
+
+  // Cerrar al hacer clic en el fondo oscuro fuera del cuadro
+  backdrop.addEventListener('click', (e) => {
+    if (e.target === backdrop) cerrarPaleta();
+  });
+
+  input.addEventListener('input', () => {
+    renderResultados(input.value.trim().toLowerCase());
+  });
+
+  function renderResultados(query) {
+    results.innerHTML = '';
     const tareas = JSON.parse(localStorage.getItem('myday_tasks') || '[]');
     const habituales = JSON.parse(localStorage.getItem('myday_habitual') || '[]');
-    let cambios = false;
 
-    tareas.forEach((t) => {
-      const sTime = t.startTime || t.time;
-      if (!sTime || t.completed || t.date !== hoyStr) return;
-      if (sTime === horaActual && t.lastNotified !== hoyStr) {
-        new Notification(`⏰ ${t.title}`, { body: `Comienza tu tarea (${sTime} - ${t.endTime || ''}).` });
-        t.lastNotified = hoyStr;
-        cambios = true;
-      }
+    const comandosBase = [
+      { icon: '➕', title: 'Crear nueva tarea', action: () => { cerrarPaleta(); abrirModalTarea(); } },
+      { icon: '🔄', title: 'Crear nueva rutina habitual', action: () => { cerrarPaleta(); abrirModalHabitual(); } },
+      { icon: '📅', title: 'Ir a Hoy', action: () => { cerrarPaleta(); fechaActual = new Date(); renderizarCalendario(); autoScrollAHoraActual(); } },
+      { icon: '🌙', title: 'Alternar Tema (Claro/Oscuro)', action: () => { cerrarPaleta(); const a = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light'; aplicarTema(a === 'dark' ? 'light' : 'dark'); } }
+    ];
+
+    const cmdsFiltrados = comandosBase.filter(c => c.title.toLowerCase().includes(query));
+    cmdsFiltrados.forEach(c => {
+      const item = document.createElement('div');
+      item.style.cssText = 'padding:10px 14px; border-radius:6px; cursor:pointer; background:var(--bg-secondary, #2a2a2a); color:var(--text-primary, #ffffff); font-weight:600; font-size:0.9rem; display:flex; align-items:center; gap:10px; margin-bottom:4px;';
+      item.innerHTML = `<span style="font-size:1.1rem; width:20px; text-align:center;">${c.icon}</span><span>${c.title}</span>`;
+      item.onclick = c.action;
+      results.appendChild(item);
     });
 
-    habituales.forEach((h) => {
-      if (!h.startTime || !(h.days || []).includes(dayOfWeekStr)) return;
-      if (h.startTime === horaActual && h.lastNotified !== hoyStr) {
-        new Notification(`🔄 Rutina: ${h.title}`, { body: `Comienza tu rutina (${h.startTime} - ${h.endTime}).` });
-        h.lastNotified = hoyStr;
-        cambios = true;
-      }
-    });
-
-    if (cambios) {
-      localStorage.setItem('myday_tasks', JSON.stringify(tareas));
-      localStorage.setItem('myday_habitual', JSON.stringify(habituales));
+    if (query.length > 0) {
+      const tareasCoincidentes = tareas.filter(t => t.title.toLowerCase().includes(query));
+      tareasCoincidentes.forEach(t => {
+        const item = document.createElement('div');
+        item.style.cssText = 'padding:10px 14px; border-radius:6px; cursor:pointer; border:1px solid var(--border-color, #444); color:var(--text-primary, #ffffff); background:var(--bg-primary, #1e1e1e); display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;';
+        item.innerHTML = `<span>📌 ${t.title}</span><small style="opacity:0.7;">${t.date || 'Tarea'}</small>`;
+        item.onclick = () => { cerrarPaleta(); abrirModalTarea(t); };
+        results.appendChild(item);
+      });
     }
-  }, 15000);
+  }
 }
