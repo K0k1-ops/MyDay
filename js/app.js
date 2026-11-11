@@ -138,3 +138,88 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (window.lucide) window.lucide.createIcons();
 });
+
+// =======================================================
+// LÓGICA DE AJUSTES: BACKUP JSON Y NOTIFICACIONES
+// =======================================================
+document.addEventListener('DOMContentLoaded', () => {
+
+  // 1. Exportar datos a archivo JSON
+  const btnExport = document.getElementById('btn-export-json');
+  if (btnExport) {
+    btnExport.addEventListener('click', async () => {
+      try {
+        // Recuperar todo LocalStorage / IndexedDB
+        const backupData = {
+          version: '1.0',
+          timestamp: new Date().toISOString(),
+          storage: { ...localStorage }
+        };
+
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
+        const downloadAnchor = document.createElement('a');
+        downloadAnchor.setAttribute("href", dataStr);
+        downloadAnchor.setAttribute("download", `myself_backup_${new Date().toISOString().slice(0,10)}.json`);
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        downloadAnchor.remove();
+        alert(' Copia de seguridad exportada con éxito.');
+      } catch (err) {
+        console.error('Error al exportar:', err);
+        alert('Error al generar la copia de seguridad.');
+      }
+    });
+  }
+
+  // 2. Importar datos desde archivo JSON
+  const inputImport = document.getElementById('input-import-json');
+  if (inputImport) {
+    inputImport.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const importedData = JSON.parse(event.target.result);
+          if (importedData.storage) {
+            Object.keys(importedData.storage).forEach((key) => {
+              localStorage.setItem(key, importedData.storage[key]);
+            });
+            alert(' Datos importados correctamente. La aplicación se recargará.');
+            window.location.reload();
+          } else {
+            alert(' El archivo JSON no tiene un formato válido.');
+          }
+        } catch (err) {
+          console.error('Error al importar:', err);
+          alert('Error al leer el archivo JSON.');
+        }
+      };
+      reader.readAsText(file);
+    });
+  }
+
+  // 3. Activar Notificaciones Nativas
+  const btnNotify = document.getElementById('btn-enable-notifications');
+  if (btnNotify) {
+    btnNotify.addEventListener('click', async () => {
+      if (!('Notification' in window)) {
+        alert('Tu navegador no soporta notificaciones locales.');
+        return;
+      }
+
+      const permission = await Notification.requestPermission();
+      if (permission === 'granted') {
+        new Notification('Myself — Agenda', {
+          body: ' Notificaciones activadas correctamente.',
+          icon: 'icons/icon-192.png'
+        });
+        btnNotify.innerText = 'Notificaciones Activadas';
+        btnNotify.style.background = '#10b981';
+      } else {
+        alert('Permiso de notificaciones denegado.');
+      }
+    });
+  }
+});
