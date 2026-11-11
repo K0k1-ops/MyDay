@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Myself — Agenda Personal</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+
+  <div id="app" class="app-layout">
+    <!-- Navegación Lateral (Desktop) -->
+    <aside class="sidebar">
+      <div class="brand">
+        <i data-lucide="sun" class="brand-icon"></i>
+        <span>Myself</span>
+      </div>
+      <nav class="nav-menu">
+        <button class="nav-link active" data-view="today">
+          <i data-lucide="layout-grid"></i> <span>Semana</span>
+        </button>
+        <button class="nav-link" data-view="calendar">
+          <i data-lucide="calendar"></i> <span>Calendario</span>
+        </button>
+        <button class="nav-link" data-view="tasks">
+          <i data-lucide="check-square"></i> <span>Tareas</span>
+        </button>
+        <button class="nav-link" data-view="notes">
+          <i data-lucide="file-text"></i> <span>Notas</span>
+        </button>
+      </nav>
+      <div class="sidebar-footer" style="display: flex; gap: 8px;">
+        <button id="theme-toggle" class="icon-button" title="Cambiar tema">
+          <i data-lucide="moon"></i>
+        </button>
+        <button onclick="window.openSettings()" class="icon-button" title="Ajustes">
+          <i data-lucide="settings"></i>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Áreas de Contenido (Vistas SPA) -->
+    <main class="main-content">
+      <section id="view-today" class="view-page active"></section>
+      <section id="view-calendar" class="view-page"></section>
+      <section id="view-tasks" class="view-page"></section>
+      <section id="view-notes" class="view-page"></section>
+    </main>
+
+    <!-- Navegación Inferior (Móvil) -->
+    <nav class="mobile-nav">
+      <button class="mobile-link active" data-view="today">
+        <i data-lucide="layout-grid"></i>
+        <span>Semana</span>
+      </button>
+      <button class="mobile-link" data-view="calendar">
+        <i data-lucide="calendar"></i>
+        <span>Agenda</span>
+      </button>
+      <button class="mobile-link" data-view="tasks">
+        <i data-lucide="check-square"></i>
+        <span>Tareas</span>
+      </button>
+      <button class="mobile-link" data-view="notes">
+        <i data-lucide="file-text"></i>
+        <span>Notas</span>
+      </button>
+    </nav>
+
+    <!-- Botón Flotante Acción Rápida (+) -->
+    <button id="fab-add" class="fab-button" aria-label="Añadir">
+      <i data-lucide="plus"></i>
+    </button>
+  </div>
+
+  <!-- Modal Unificado de Creación -->
+  <div id="quick-modal" class="modal-backdrop hidden">
+    <div class="modal-container">
+      <header class="modal-header">
+        <div class="tab-selector">
+          <button class="tab-btn active" data-tab="task">Tarea / Rutina</button>
+          <button class="tab-btn" data-tab="note">Nota</button>
+        </div>
+        <button class="close-modal"><i data-lucide="x"></i></button>
+      </header>
+      <div class="modal-body">
+        <form id="quick-form"></form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Ajustes y Backup -->
+  <div id="settings-modal" class="modal-backdrop hidden">
+    <div class="modal-container">
+      <header class="modal-header">
+        <h2 style="font-size: 1.2rem; font-weight: 700;">Ajustes y Datos</h2>
+        <button id="close-settings-modal" class="close-modal"><i data-lucide="x"></i></button>
+      </header>
+      <div class="modal-body" style="display: flex; flex-direction: column; gap: 16px;">
+        <div>
+          <h3 style="font-size: 0.95rem; font-weight: 600; margin-bottom: 4px;">Copias de Seguridad</h3>
+          <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 12px;">
+            Guarda tus datos en un archivo JSON local o restaura una copia anterior de Myself.
+          </p>
+          <div style="display: flex; gap: 8px;">
+            <button id="btn-export-json" class="btn-primary" style="background: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border-color);">
+              <i data-lucide="download" style="width: 16px; height: 16px; vertical-align: -2px;"></i> Exportar JSON
+            </button>
+            <label class="btn-primary" style="background: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border-color); text-align: center; cursor: pointer;">
+              <i data-lucide="upload" style="width: 16px; height: 16px; vertical-align: -2px;"></i> Importar JSON
+              <input type="file" id="input-import-json" accept=".json" style="display: none;">
+            </label>
+          </div>
+        </div>
+
+        <hr style="border: none; border-top: 1px solid var(--border-color);">
+
+        <div>
+          <h3 style="font-size: 0.95rem; font-weight: 600; margin-bottom: 4px;">Notificaciones</h3>
+          <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 8px;">
+            Activa las notificaciones del navegador para avisos locales.
+          </p>
+          <button id="btn-enable-notifications" class="btn-primary" style="background: var(--accent-primary);">
+            Activar Notificaciones
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
