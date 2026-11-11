@@ -1,10 +1,10 @@
 // =======================================================
-// MYSELF — MOTOR PRINCIPAL (REJILLA CONTINUA Y UNIFICADA)
+// MYSELF — MOTOR PRINCIPAL (CON SELECTOR RÁPIDO DE DÍAS)
 // =======================================================
 
 let fechaActual = new Date();
-const HORA_INICIO_GRID = 7; // 07:00
-const HORA_FIN_GRID = 23;  // 23:00
+const HORA_INICIO_GRID = 7;
+const HORA_FIN_GRID = 23;
 
 document.addEventListener('DOMContentLoaded', () => {
   if (window.lucide) lucide.createIcons();
@@ -140,7 +140,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnExport) {
     btnExport.addEventListener('click', () => {
       const backupData = {
-        version: '8.0',
+        version: '9.0',
         timestamp: new Date().toISOString(),
         myday_tasks: localStorage.getItem('myday_tasks') || '[]',
         myday_habitual: localStorage.getItem('myday_habitual') || '[]',
@@ -244,7 +244,7 @@ function obtenerLunes(d) {
 }
 
 // =======================================================
-// REJILLA SEMANAL CONTINUA Y UNIFICADA
+// REJILLA SEMANAL CONTINUA
 // =======================================================
 function renderizarCalendario() {
   const gridHeader = document.getElementById('calendar-grid-header');
@@ -266,7 +266,7 @@ function renderizarCalendario() {
 
   const hoyStr = new Date().toISOString().slice(0, 10);
 
-  // 1. DIBUJAR CABECERA DE DÍAS (Sticky)
+  // 1. Cabecera
   const emptyCorner = document.createElement('div');
   emptyCorner.className = 'grid-header-cell';
   emptyCorner.style.fontWeight = '700';
@@ -287,7 +287,7 @@ function renderizarCalendario() {
     gridHeader.appendChild(headerDia);
   });
 
-  // 2. DIBUJAR COLUMNA DE HORAS (IZQUIERDA)
+  // 2. Horas
   const timeColumn = document.createElement('div');
   timeColumn.className = 'grid-time-column';
   for (let h = HORA_INICIO_GRID; h <= HORA_FIN_GRID; h++) {
@@ -298,7 +298,7 @@ function renderizarCalendario() {
   }
   gridBody.appendChild(timeColumn);
 
-  // 3. DIBUJAR COLUMNAS POR DÍA CON CAPA DE EVENTOS CONTINUA
+  // 3. Días y Tareas
   const tareas = JSON.parse(localStorage.getItem('myday_tasks') || '[]');
   const habituales = JSON.parse(localStorage.getItem('myday_habitual') || '[]');
   const minInicioGrid = HORA_INICIO_GRID * 60;
@@ -311,7 +311,6 @@ function renderizarCalendario() {
     const dayColumn = document.createElement('div');
     dayColumn.className = `grid-day-column ${esPasado ? 'is-past' : ''}`;
 
-    // Líneas de fondo por hora
     for (let h = HORA_INICIO_GRID; h <= HORA_FIN_GRID; h++) {
       const bgSlot = document.createElement('div');
       bgSlot.className = 'grid-hour-bg-slot';
@@ -322,11 +321,10 @@ function renderizarCalendario() {
       dayColumn.appendChild(bgSlot);
     }
 
-    // Capa independiente para los eventos continuos
     const eventsLayer = document.createElement('div');
     eventsLayer.className = 'day-events-layer';
 
-    // A. Renderizar Rutinas Habituales
+    // Rutinas
     const habitualesCoincidentes = habituales.filter(hab => hab.days && hab.days.includes(String(dayOfWeek)));
     habitualesCoincidentes.forEach(hab => {
       const startMin = timeToMinutes(hab.startTime || '10:00');
@@ -352,7 +350,7 @@ function renderizarCalendario() {
       }
     });
 
-    // B. Renderizar Tareas Puntuales Unificadas
+    // Tareas Puntuales
     const tareasDia = tareas.filter(t => t.date === fechaISO);
     tareasDia.forEach(t => {
       const sTime = t.startTime || t.time || '09:00';
@@ -390,7 +388,7 @@ function renderizarCalendario() {
 }
 
 // =======================================================
-// GESTIÓN DE RUTINAS HABITUALES (SIDEBAR & MODAL)
+// GESTIÓN DE RUTINAS HABITUALES
 // =======================================================
 function renderizarHabitualesSidebar() {
   const listContainer = document.getElementById('side-habitual-list');
@@ -538,7 +536,7 @@ function configurarModalHabitualForm() {
 }
 
 // =======================================================
-// MODAL TAREA PUNTUAL
+// MODAL TAREA PUNTUAL (CON SELECTOR DE DÍAS RÁPIDO)
 // =======================================================
 function abrirModalTarea(tareaExistente = {}) {
   const modal = document.getElementById('modal-task');
@@ -550,19 +548,62 @@ function abrirModalTarea(tareaExistente = {}) {
   const inputStart = document.getElementById('task-start-input');
   const inputEnd = document.getElementById('task-end-input');
   const btnDelete = document.getElementById('btn-delete-task');
+  const quickDaysContainer = document.getElementById('task-quick-days-container');
 
   if (!modal) return;
 
   const hoyStr = new Date().toISOString().slice(0, 10);
+  const fechaSeleccionada = tareaExistente.date || hoyStr;
   const startDefault = tareaExistente.startTime || tareaExistente.time || '09:00';
   const endDefault = tareaExistente.endTime || calcularHoraFinPorDefecto(startDefault);
+
+  // Renderizar 7 botones de la semana visible actual
+  if (quickDaysContainer) {
+    quickDaysContainer.innerHTML = '';
+    const lunes = obtenerLunes(fechaActual);
+    const diasSemana = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(lunes);
+      d.setDate(lunes.getDate() + i);
+      const dateISO = d.toISOString().slice(0, 10);
+
+      const chip = document.createElement('div');
+      chip.className = 'day-chip';
+      if (dateISO === fechaSeleccionada) {
+        chip.style.background = 'var(--accent-primary)';
+        chip.style.color = '#ffffff';
+        chip.style.borderColor = 'var(--accent-primary)';
+      }
+
+      chip.innerHTML = `
+        <span style="font-size:0.7rem; text-transform:uppercase;">${diasSemana[i]}</span>
+        <span style="font-size:0.85rem; font-weight:800;">${d.getDate()}</span>
+      `;
+
+      chip.onclick = () => {
+        inputDate.value = dateISO;
+        // Marcar visualmente el chip seleccionado
+        Array.from(quickDaysContainer.children).forEach(c => {
+          c.style.background = 'var(--bg-primary)';
+          c.style.color = 'var(--text-primary)';
+          c.style.borderColor = 'var(--border-color)';
+        });
+        chip.style.background = 'var(--accent-primary)';
+        chip.style.color = '#ffffff';
+        chip.style.borderColor = 'var(--accent-primary)';
+      };
+
+      quickDaysContainer.appendChild(chip);
+    }
+  }
 
   if (tareaExistente.id) {
     modalTitle.innerText = "Editar Tarea";
     inputId.value = tareaExistente.id;
     inputTitle.value = tareaExistente.title || '';
     if (inputCategory) inputCategory.value = tareaExistente.category || 'personal';
-    inputDate.value = tareaExistente.date || hoyStr;
+    inputDate.value = fechaSeleccionada;
     inputStart.value = startDefault;
     inputEnd.value = endDefault;
     btnDelete.style.display = 'block';
@@ -571,7 +612,7 @@ function abrirModalTarea(tareaExistente = {}) {
     inputId.value = '';
     inputTitle.value = '';
     if (inputCategory) inputCategory.value = 'personal';
-    inputDate.value = tareaExistente.date || hoyStr;
+    inputDate.value = fechaSeleccionada;
     inputStart.value = startDefault;
     inputEnd.value = endDefault;
     btnDelete.style.display = 'none';
