@@ -442,3 +442,74 @@
   outline: 2px dashed var(--accent-primary);
   outline-offset: -2px;
 }
+
+/* =======================================================
+   CORRECCIONES DE USABILIDAD MÓVIL (CALENDARIO Y NAVEGACIÓN)
+   ======================================================= */
+@media (max-width: 768px) {
+
+  /* 1. NAVEGACIÓN INFERIOR: FORZAR 5 BOTONES */
+  .mobile-nav {
+    display: grid !important;
+    grid-template-columns: repeat(5, 1fr) !important;
+    width: 100% !important;
+  }
+
+  .mobile-link {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  /* 2. VISTA SEMANAL: SCROLL HORIZONTAL SUAVE PARA VER DE LUNES A DOMINGO */
+  /* Hace que la cuadrícula no se estruje y se pueda deslizar lateralmente */
+  #view-today,
+  .week-view-container,
+  .calendar-grid-wrapper {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+  }
+
+  .week-grid,
+  .calendar-table,
+  .schedule-grid {
+    min-width: 650px !important; /* Ancho suficiente para que los 7 días respiren */
+    position: relative;
+  }
+
+  /* 3. COLUMNA DE HORAS FIJA AL DESLIZAR */
+  .hours-column,
+  .time-sidebar,
+  .grid-header-time {
+    position: sticky !important;
+    left: 0;
+    background-color: var(--bg-surface, #ffffff);
+    z-index: 10;
+    box-shadow: 2px 0 5px rgba(0,0,0,0.05);
+  }
+
+  /* 4. ARREGLAR SUPERPOSICIÓN DE TAREAS (DESBORDAMIENTO) */
+  .day-column,
+  .time-slot,
+  .hour-cell {
+    position: relative !important;
+    overflow: hidden; /* Corta la tarea para que no flote sobre otros días o la noche */
+  }
+
+  .task-card,
+  .event-item,
+  .appointment {
+    max-width: 100%;
+    box-sizing: border-box;
+    z-index: 2;
+  }
+
+  /* 5. ENCABEZADOS DE DÍAS (LUN, MAR, MIÉ...) FIJOS ARRIBA */
+  .week-header,
+  .days-header {
+    position: sticky;
+    top: 0;
+    background-color: var(--bg-surface, #ffffff);
+    z-index: 9;
+  }
+}
