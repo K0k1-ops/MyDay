@@ -1,5 +1,5 @@
 // =======================================================
-// MYSELF — MOTOR PRINCIPAL CON MODO NOCHE Y RUTINAS HABITUALES
+// MYSELF — MOTOR PRINCIPAL (REJILLA MULTIDÍA + RUTINAS RECURRENTES)
 // =======================================================
 
 let fechaActual = new Date();
@@ -13,15 +13,15 @@ document.addEventListener('DOMContentLoaded', () => {
       .catch(err => console.error('Error SW:', err));
   }
 
-  // 1. Inicializar Tema Oscuro / Claro
+  // 1. Cargar Modo Noche
   inicializarTema();
 
-  // 2. Renderizar Calendario y Rutinas Habituales
+  // 2. Renderizar Calendario y Sidebar
   renderizarCalendario();
-  renderizarHabituales();
+  renderizarHabitualesSidebar();
 
   // --------------------------------------------------
-  // A. NAVEGACIÓN Y BOTONES CABECERA
+  // A. EVENTOS DE CABECERA Y NAVEGACIÓN
   // --------------------------------------------------
   const btnPrev = document.getElementById('btn-prev-week');
   const btnNext = document.getElementById('btn-next-week');
@@ -123,7 +123,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // --------------------------------------------------
-  // D. MODAL DE AJUSTES E IMPORTACIÓN / EXPORTACIÓN
+  // D. AJUSTES E IMPORTACIÓN / EXPORTACIÓN
   // --------------------------------------------------
   const btnOpenSettings = document.getElementById('btn-open-settings');
   const btnCloseSettings = document.getElementById('btn-close-settings');
@@ -140,7 +140,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnExport) {
     btnExport.addEventListener('click', () => {
       const backupData = {
-        version: '3.0',
+        version: '4.0',
         timestamp: new Date().toISOString(),
         myday_tasks: localStorage.getItem('myday_tasks') || '[]',
         myday_habitual: localStorage.getItem('myday_habitual') || '[]',
@@ -151,7 +151,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
       const dl = document.createElement('a');
       dl.setAttribute("href", dataStr);
-      dl.setAttribute("download", `myself_pc_full_backup_${new Date().toISOString().slice(0,10)}.json`);
+      dl.setAttribute("download", `myself_backup_${new Date().toISOString().slice(0,10)}.json`);
       document.body.appendChild(dl);
       dl.click();
       dl.remove();
@@ -167,7 +167,6 @@ document.addEventListener('DOMContentLoaded', () => {
       reader.onload = (evt) => {
         try {
           const imported = JSON.parse(evt.target.result);
-
           if (imported.storage) {
             Object.keys(imported.storage).forEach(k => localStorage.setItem(k, imported.storage[k]));
           } else {
@@ -179,11 +178,10 @@ document.addEventListener('DOMContentLoaded', () => {
               }
             });
           }
-
-          alert('¡Sincronización de copia completada con éxito!');
+          alert('¡Sincronización completada!');
           window.location.reload();
         } catch (err) {
-          alert('Error al leer el archivo JSON: ' + err.message);
+          alert('Error al importar el JSON: ' + err.message);
         }
       };
       reader.readAsText(file);
@@ -205,7 +203,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // =======================================================
-// MODO NOCHE (DARK MODE)
+// MODO NOCHE
 // =======================================================
 function inicializarTema() {
   const temaGuardado = localStorage.getItem('myday_theme') || 'light';
@@ -222,7 +220,7 @@ function aplicarTema(tema) {
 }
 
 // =======================================================
-// REJILLA SEMANAL (CON CLASES Y DÍAS PASADOS EN VERDE)
+// REJILLA SEMANAL (CON TAREAS Y RUTINAS HABITUALES)
 // =======================================================
 function obtenerLunes(d) {
   const date = new Date(d);
@@ -249,14 +247,14 @@ function renderizarCalendario() {
 
   const hoyStr = new Date().toISOString().slice(0, 10);
 
-  // Fila Encabezado Hora
+  // 1. Header Hora
   const headerHora = document.createElement('div');
   headerHora.className = 'grid-time-cell';
   headerHora.style.fontWeight = '700';
   headerHora.innerText = 'Hora';
   grid.appendChild(headerHora);
 
-  // Encabezados Días
+  // 2. Encabezados Días
   fechasSemana.forEach((fecha, idx) => {
     const fechaStr = fecha.toISOString().slice(0, 10);
     const esHoy = fechaStr === hoyStr;
@@ -284,8 +282,9 @@ function renderizarCalendario() {
   });
 
   const tareas = JSON.parse(localStorage.getItem('myday_tasks') || '[]');
+  const habituales = JSON.parse(localStorage.getItem('myday_habitual') || '[]');
 
-  // Filas por Hora
+  // 3. Filas por Hora (De 07:00 a 23:00)
   for (let h = 7; h <= 23; h++) {
     const horaStr = `${String(h).padStart(2, '0')}:00`;
 
@@ -296,11 +295,33 @@ function renderizarCalendario() {
 
     fechasSemana.forEach((fecha) => {
       const fechaISO = fecha.toISOString().slice(0, 10);
+      const dayOfWeek = fecha.getDay(); // 0 = Dom, 1 = Lun ... 6 = Sáb
       const esPasado = fechaISO < hoyStr;
 
       const cell = document.createElement('div');
       cell.className = `grid-slot-cell ${esPasado ? 'is-past' : ''}`;
 
+      // A. Mostrar Tareas Habituales (Rutinas)
+      const habitualesCoincidentes = habituales.filter(hab => {
+        if (!hab.days || !hab.days.includes(String(dayOfWeek))) return false;
+        const startH = parseInt((hab.startTime || '10:00').split(':')[0], 10);
+        const endH = parseInt((hab.endTime || '11:00').split(':')[0], 10);
+        const maxH = endH > startH ? endH : startH + 1;
+        return h >= startH && h < maxH;
+      });
+
+      habitualesCoincidentes.forEach(hab => {
+        const itemHab = document.createElement('div');
+        itemHab.className = 'task-card-item habitual';
+        itemHab.innerText = `🔄 ${hab.startTime}-${hab.endTime} ${hab.title}`;
+        itemHab.onclick = (e) => {
+          e.stopPropagation();
+          abrirModalHabitual(hab);
+        };
+        cell.appendChild(itemHab);
+      });
+
+      // B. Mostrar Tareas Puntuales
       const tareasSlot = tareas.filter(t => t.date === fechaISO && t.time && t.time.startsWith(String(h).padStart(2, '0')));
 
       tareasSlot.forEach(t => {
@@ -314,6 +335,7 @@ function renderizarCalendario() {
         cell.appendChild(item);
       });
 
+      // Clic en la celda vacía: Crear nueva tarea
       cell.onclick = () => abrirModalTarea({ date: fechaISO, time: horaStr });
       grid.appendChild(cell);
     });
@@ -321,58 +343,85 @@ function renderizarCalendario() {
 }
 
 // =======================================================
-// TAREAS HABITUALES / RUTINAS
+// GESTIÓN DE RUTINAS HABITUALES (SIDEBAR & MODAL)
 // =======================================================
-function renderizarHabituales() {
+function renderizarHabitualesSidebar() {
   const listContainer = document.getElementById('side-habitual-list');
   if (!listContainer) return;
 
   const habituales = JSON.parse(localStorage.getItem('myday_habitual') || '[]');
 
   if (habituales.length === 0) {
-    listContainer.innerHTML = '<p style="color:var(--text-secondary); font-size:0.8rem;">No tienes rutinas habituales guardadas.</p>';
+    listContainer.innerHTML = '<p style="color:var(--text-secondary); font-size:0.8rem;">No tienes rutinas programadas.</p>';
     return;
   }
 
-  listContainer.innerHTML = habituales.map(h => `
-    <div style="background:var(--bg-primary); border:1px solid var(--border-color); padding:8px 10px; border-radius:8px; display:flex; justify-content:space-between; align-items:center;">
-      <div>
-        <div style="font-weight:700; color:var(--text-primary);">${h.title}</div>
-        <div style="font-size:0.75rem; color:var(--text-secondary);">${h.time || '10:00'}</div>
+  const nombresDias = { "1": "Lun", "2": "Mar", "3": "Mié", "4": "Jue", "5": "Vie", "6": "Sáb", "0": "Dom" };
+
+  listContainer.innerHTML = habituales.map(h => {
+    const diasTxt = (h.days || []).map(d => nombresDias[d] || d).join(', ') || 'Sin días';
+    return `
+      <div style="background:var(--bg-primary); border:1px solid var(--border-color); padding:8px 10px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; cursor:pointer;" onclick="abrirModalHabitualDirecto('${h.id}')">
+        <div>
+          <div style="font-weight:700; color:var(--text-primary);">${h.title}</div>
+          <div style="font-size:0.75rem; color:var(--text-secondary);">${diasTxt} | ${h.startTime || '10:00'} - ${h.endTime || '11:00'}</div>
+        </div>
+        <span style="font-size:0.85rem; color:var(--accent-primary);">✏️</span>
       </div>
-      <div style="display:flex; gap:6px;">
-        <button onclick="añadirHabitualAHoy('${h.id}')" style="padding:4px 8px; background:var(--accent-primary); color:#fff; border:none; border-radius:6px; font-weight:600; cursor:pointer; font-size:0.75rem;" title="Añadir a Hoy">+ Hoy</button>
-        <button onclick="eliminarHabitual('${h.id}')" style="padding:4px 6px; background:transparent; color:#ef4444; border:none; cursor:pointer; font-size:0.85rem;" title="Eliminar Rutina">🗑️</button>
-      </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 }
 
-function añadirHabitualAHoy(id) {
+function abrirModalHabitualDirecto(id) {
   const habituales = JSON.parse(localStorage.getItem('myday_habitual') || '[]');
-  const rut = habituales.find(x => x.id === id);
-  if (!rut) return;
-
-  const hoyStr = new Date().toISOString().slice(0, 10);
-  const tareas = JSON.parse(localStorage.getItem('myday_tasks') || '[]');
-
-  tareas.push({
-    id: Date.now().toString(),
-    title: rut.title,
-    date: hoyStr,
-    time: rut.time || '10:00',
-    completed: false
-  });
-
-  localStorage.setItem('myday_tasks', JSON.stringify(tareas));
-  renderizarCalendario();
+  const hab = habituales.find(x => x.id === id);
+  if (hab) abrirModalHabitual(hab);
 }
 
-function eliminarHabitual(id) {
-  let habituales = JSON.parse(localStorage.getItem('myday_habitual') || '[]');
-  habituales = habituales.filter(h => h.id !== id);
-  localStorage.setItem('myday_habitual', JSON.stringify(habituales));
-  renderizarHabituales();
+function abrirModalHabitual(habitualExistente = {}) {
+  const modal = document.getElementById('modal-habitual');
+  const titleHeader = document.getElementById('modal-habitual-header-title');
+  const inputId = document.getElementById('habitual-id');
+  const inputTitle = document.getElementById('habitual-title-input');
+  const inputStart = document.getElementById('habitual-start-input');
+  const inputEnd = document.getElementById('habitual-end-input');
+  const btnDelete = document.getElementById('btn-delete-habitual');
+  const dayCheckboxes = document.querySelectorAll('input[name="habitual-day"]');
+
+  if (!modal) return;
+
+  // Limpiar checkboxes
+  dayCheckboxes.forEach(cb => cb.checked = false);
+
+  if (habitualExistente.id) {
+    titleHeader.innerText = "Editar Rutina Habitual";
+    inputId.value = habitualExistente.id;
+    inputTitle.value = habitualExistente.title || '';
+    inputStart.value = habitualExistente.startTime || '10:00';
+    inputEnd.value = habitualExistente.endTime || '11:00';
+    
+    (habitualExistente.days || []).forEach(dayVal => {
+      const targetCb = document.querySelector(`input[name="habitual-day"][value="${dayVal}"]`);
+      if (targetCb) targetCb.checked = true;
+    });
+
+    btnDelete.style.display = 'block';
+  } else {
+    titleHeader.innerText = "Nueva Rutina Habitual";
+    inputId.value = '';
+    inputTitle.value = '';
+    inputStart.value = '10:00';
+    inputEnd.value = '11:00';
+    // Por defecto Lunes a Viernes
+    ['1', '2', '3', '4', '5'].forEach(dayVal => {
+      const targetCb = document.querySelector(`input[name="habitual-day"][value="${dayVal}"]`);
+      if (targetCb) targetCb.checked = true;
+    });
+    btnDelete.style.display = 'none';
+  }
+
+  modal.classList.remove('hidden');
+  setTimeout(() => inputTitle.focus(), 100);
 }
 
 function configurarModalHabitualForm() {
@@ -380,34 +429,72 @@ function configurarModalHabitualForm() {
   const modal = document.getElementById('modal-habitual');
   const btnClose = document.getElementById('btn-close-habitual-modal');
   const btnCancel = document.getElementById('btn-cancel-habitual');
+  const btnDelete = document.getElementById('btn-delete-habitual');
   const form = document.getElementById('form-habitual');
 
   const cerrar = () => modal.classList.add('hidden');
 
-  if (modalBtn) modalBtn.onclick = () => modal.classList.remove('hidden');
+  if (modalBtn) modalBtn.onclick = () => abrirModalHabitual();
   if (btnClose) btnClose.onclick = cerrar;
   if (btnCancel) btnCancel.onclick = cerrar;
 
   if (form) {
     form.onsubmit = (e) => {
       e.preventDefault();
+      const id = document.getElementById('habitual-id').value;
       const title = document.getElementById('habitual-title-input').value.trim();
-      const time = document.getElementById('habitual-time-input').value;
-      if (!title) return;
+      const startTime = document.getElementById('habitual-start-input').value;
+      const endTime = document.getElementById('habitual-end-input').value;
+      
+      const selectedDays = Array.from(document.querySelectorAll('input[name="habitual-day"]:checked')).map(cb => cb.value);
 
-      const habituales = JSON.parse(localStorage.getItem('myday_habitual') || '[]');
-      habituales.push({ id: Date.now().toString(), title, time });
+      if (!title || selectedDays.length === 0) {
+        alert('Por favor añade un título y selecciona al menos un día.');
+        return;
+      }
+
+      let habituales = JSON.parse(localStorage.getItem('myday_habitual') || '[]');
+
+      if (id) {
+        const idx = habituales.findIndex(h => h.id === id);
+        if (idx !== -1) {
+          habituales[idx] = { id, title, days: selectedDays, startTime, endTime };
+        }
+      } else {
+        habituales.push({
+          id: Date.now().toString(),
+          title,
+          days: selectedDays,
+          startTime,
+          endTime
+        });
+      }
 
       localStorage.setItem('myday_habitual', JSON.stringify(habituales));
-      document.getElementById('habitual-title-input').value = '';
       cerrar();
-      renderizarHabituales();
+      renderizarHabitualesSidebar();
+      renderizarCalendario();
+    };
+  }
+
+  if (btnDelete) {
+    btnDelete.onclick = () => {
+      const id = document.getElementById('habitual-id').value;
+      if (!id) return;
+
+      let habituales = JSON.parse(localStorage.getItem('myday_habitual') || '[]');
+      habituales = habituales.filter(h => h.id !== id);
+
+      localStorage.setItem('myday_habitual', JSON.stringify(habituales));
+      cerrar();
+      renderizarHabitualesSidebar();
+      renderizarCalendario();
     };
   }
 }
 
 // =======================================================
-// MODAL TAREA NORMAL (CREAR Y EDITAR)
+// MODAL TAREA PUNTUAL (CREAR Y EDITAR)
 // =======================================================
 function abrirModalTarea(tareaExistente = {}) {
   const modal = document.getElementById('modal-task');
@@ -504,25 +591,44 @@ function configurarModalTareaForm() {
   }
 }
 
+// =======================================================
+// COMPROBADOR DE NOTIFICACIONES
+// =======================================================
 function iniciarComprobadorNotificaciones() {
   setInterval(() => {
     if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
     const ahora = new Date();
     const horaActual = `${String(ahora.getHours()).padStart(2, '0')}:${String(ahora.getMinutes()).padStart(2, '0')}`;
     const hoyStr = ahora.toISOString().slice(0, 10);
+    const dayOfWeekStr = String(ahora.getDay());
 
     const tareas = JSON.parse(localStorage.getItem('myday_tasks') || '[]');
+    const habituales = JSON.parse(localStorage.getItem('myday_habitual') || '[]');
     let cambios = false;
 
+    // Avisos tareas puntuales
     tareas.forEach((t) => {
       if (!t.time || t.completed || t.date !== hoyStr) return;
       if (t.time === horaActual && t.lastNotified !== hoyStr) {
-        new Notification(`⏰ ${t.title}`, { body: `Es la hora (${t.time}).` });
+        new Notification(`⏰ ${t.title}`, { body: `Es la hora de tu tarea (${t.time}).` });
         t.lastNotified = hoyStr;
         cambios = true;
       }
     });
 
-    if (cambios) localStorage.setItem('myday_tasks', JSON.stringify(tareas));
+    // Avisos rutinas habituales
+    habituales.forEach((h) => {
+      if (!h.startTime || !(h.days || []).includes(dayOfWeekStr)) return;
+      if (h.startTime === horaActual && h.lastNotified !== hoyStr) {
+        new Notification(`🔄 Rutina: ${h.title}`, { body: `Comienza tu rutina (${h.startTime} - ${h.endTime}).` });
+        h.lastNotified = hoyStr;
+        cambios = true;
+      }
+    });
+
+    if (cambios) {
+      localStorage.setItem('myday_tasks', JSON.stringify(tareas));
+      localStorage.setItem('myday_habitual', JSON.stringify(habituales));
+    }
   }, 15000);
 }

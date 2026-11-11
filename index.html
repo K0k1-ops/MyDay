@@ -46,10 +46,10 @@
       <!-- COLUMNA DERECHA: Panel Lateral Permanente -->
       <aside class="desktop-side-panel">
         
-        <!-- 1. Tareas Habituales / Rutinas -->
+        <!-- 1. Rutinas Habituales -->
         <div class="side-card">
           <div class="side-card-title">
-            🔄 Tareas Habituales
+            🔄 Rutinas Habituales
             <button id="btn-open-habitual-modal" style="font-size: 0.75rem; padding: 3px 8px; border-radius: 6px; background: var(--accent-primary); color: #fff; border: none; cursor: pointer; font-weight: 600;">+ Crear</button>
           </div>
           <div id="side-habitual-list" style="display: flex; flex-direction: column; gap: 8px; font-size: 0.85rem;">
@@ -84,7 +84,7 @@
     </div>
   </div>
 
-  <!-- MODAL: CREAR / EDITAR TAREA -->
+  <!-- MODAL: CREAR / EDITAR TAREA PUNTUAL -->
   <div id="modal-task" class="modal-backdrop hidden">
     <div class="modal-content">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
@@ -118,25 +118,50 @@
     </div>
   </div>
 
-  <!-- MODAL: GESTIONAR TAREAS HABITUALES -->
+  <!-- MODAL: GESTIONAR TAREA HABITUAL / RUTINA -->
   <div id="modal-habitual" class="modal-backdrop hidden">
     <div class="modal-content">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-        <h2 style="font-size:1.2rem; font-weight:700;">Nueva Tarea Habitual</h2>
+        <h2 id="modal-habitual-header-title" style="font-size:1.2rem; font-weight:700;">Nueva Rutina Habitual</h2>
         <button id="btn-close-habitual-modal" style="background:none; border:none; font-size:1.2rem; cursor:pointer; color:var(--text-primary);">✕</button>
       </div>
       <form id="form-habitual" style="display:flex; flex-direction:column; gap:14px;">
+        <input type="hidden" id="habitual-id">
         <div>
           <label style="font-size:0.85rem; font-weight:600; display:block; margin-bottom:4px;">Nombre de la Rutina</label>
-          <input type="text" id="habitual-title-input" required style="width:100%; padding:10px 12px; border-radius:8px; font-family:inherit;" placeholder="Ej. Gimnasio, Repasar clase...">
+          <input type="text" id="habitual-title-input" required style="width:100%; padding:10px 12px; border-radius:8px; font-family:inherit;" placeholder="Ej. Gimnasio, Clase de Sistemas...">
         </div>
+        
         <div>
-          <label style="font-size:0.85rem; font-weight:600; display:block; margin-bottom:4px;">Hora Habitual</label>
-          <input type="time" id="habitual-time-input" required value="10:00" style="width:100%; padding:8px 12px; border-radius:8px; font-family:inherit;">
+          <label style="font-size:0.85rem; font-weight:600; display:block; margin-bottom:4px;">Días de la Semana</label>
+          <div class="day-chips-grid">
+            <label class="day-chip"><span>L</span><input type="checkbox" name="habitual-day" value="1"></label>
+            <label class="day-chip"><span>M</span><input type="checkbox" name="habitual-day" value="2"></label>
+            <label class="day-chip"><span>X</span><input type="checkbox" name="habitual-day" value="3"></label>
+            <label class="day-chip"><span>J</span><input type="checkbox" name="habitual-day" value="4"></label>
+            <label class="day-chip"><span>V</span><input type="checkbox" name="habitual-day" value="5"></label>
+            <label class="day-chip"><span>S</span><input type="checkbox" name="habitual-day" value="6"></label>
+            <label class="day-chip"><span>D</span><input type="checkbox" name="habitual-day" value="0"></label>
+          </div>
         </div>
-        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:10px;">
-          <button type="button" id="btn-cancel-habitual" style="padding:8px 16px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-surface); color:var(--text-primary); cursor:pointer;">Cancelar</button>
-          <button type="submit" style="padding:8px 16px; border-radius:8px; background:var(--accent-primary); color:#fff; border:none; cursor:pointer; font-weight:600;">Guardar Rutina</button>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+          <div>
+            <label style="font-size:0.85rem; font-weight:600; display:block; margin-bottom:4px;">Hora Inicio</label>
+            <input type="time" id="habitual-start-input" required value="10:00" style="width:100%; padding:8px 12px; border-radius:8px; font-family:inherit;">
+          </div>
+          <div>
+            <label style="font-size:0.85rem; font-weight:600; display:block; margin-bottom:4px;">Hora Fin</label>
+            <input type="time" id="habitual-end-input" required value="11:00" style="width:100%; padding:8px 12px; border-radius:8px; font-family:inherit;">
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
+          <button type="button" id="btn-delete-habitual" style="padding:8px 16px; border-radius:8px; background:#ef4444; color:#fff; border:none; cursor:pointer; font-weight:600; display:none;">Eliminar</button>
+          <div style="display:flex; gap:8px; margin-left:auto;">
+            <button type="button" id="btn-cancel-habitual" style="padding:8px 16px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-surface); color:var(--text-primary); cursor:pointer;">Cancelar</button>
+            <button type="submit" style="padding:8px 16px; border-radius:8px; background:var(--accent-primary); color:#fff; border:none; cursor:pointer; font-weight:600;">Guardar Rutina</button>
+          </div>
         </div>
       </form>
     </div>

@@ -144,7 +144,7 @@ body {
   background: var(--bg-past-day);
 }
 
-/* Tarjeta de Tarea en Calendario */
+/* Tarjeta de Tarea Puntual */
 .task-card-item {
   background: #dbeafe;
   border-left: 3px solid #2563eb;
@@ -172,6 +172,48 @@ body {
   background: #334155;
   border-left-color: #64748b;
   color: #94a3b8;
+}
+
+/* Tarjeta de Tarea Habitual / Rutina (Púrpura) */
+.task-card-item.habitual {
+  background: #f3e8ff;
+  border-left: 3px solid #9333ea;
+  color: #6b21a8;
+}
+[data-theme="dark"] .task-card-item.habitual {
+  background: #581c87;
+  border-left-color: #c084fc;
+  color: #f3e8ff;
+}
+
+/* Selector de Días de la Semana (Checkboxes estilo Chips) */
+.day-chips-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-top: 6px;
+}
+.day-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 2px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: var(--bg-primary);
+  user-select: none;
+}
+.day-chip input {
+  display: none;
+}
+.day-chip:has(input:checked) {
+  background: var(--accent-primary);
+  color: #ffffff;
+  border-color: var(--accent-primary);
 }
 
 /* Panel Lateral */
