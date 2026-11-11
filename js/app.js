@@ -1,5 +1,5 @@
 // =======================================================
-// MYSELF — MOTOR PRINCIPAL (REJILLA MULTIDÍA + RUTINAS RECURRENTES)
+// MYSELF — MOTOR PRINCIPAL CON CATEGORÍAS (PERSONAL & ESTUDIOS)
 // =======================================================
 
 let fechaActual = new Date();
@@ -67,6 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const activeEl = document.activeElement;
     const isTyping = activeEl.tagName === 'INPUT' || 
                      activeEl.tagName === 'TEXTAREA' || 
+                     activeEl.tagName === 'SELECT' ||
                      activeEl.isContentEditable;
 
     if (e.key === 'Escape') {
@@ -140,7 +141,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnExport) {
     btnExport.addEventListener('click', () => {
       const backupData = {
-        version: '4.0',
+        version: '5.0',
         timestamp: new Date().toISOString(),
         myday_tasks: localStorage.getItem('myday_tasks') || '[]',
         myday_habitual: localStorage.getItem('myday_habitual') || '[]',
@@ -220,7 +221,7 @@ function aplicarTema(tema) {
 }
 
 // =======================================================
-// REJILLA SEMANAL (CON TAREAS Y RUTINAS HABITUALES)
+// REJILLA SEMANAL (CON CATEGORÍAS PERSONAL / ESTUDIOS)
 // =======================================================
 function obtenerLunes(d) {
   const date = new Date(d);
@@ -295,7 +296,7 @@ function renderizarCalendario() {
 
     fechasSemana.forEach((fecha) => {
       const fechaISO = fecha.toISOString().slice(0, 10);
-      const dayOfWeek = fecha.getDay(); // 0 = Dom, 1 = Lun ... 6 = Sáb
+      const dayOfWeek = fecha.getDay();
       const esPasado = fechaISO < hoyStr;
 
       const cell = document.createElement('div');
@@ -321,13 +322,17 @@ function renderizarCalendario() {
         cell.appendChild(itemHab);
       });
 
-      // B. Mostrar Tareas Puntuales
+      // B. Mostrar Tareas Puntuales por Categoría
       const tareasSlot = tareas.filter(t => t.date === fechaISO && t.time && t.time.startsWith(String(h).padStart(2, '0')));
 
       tareasSlot.forEach(t => {
+        const catClass = t.category === 'estudios' ? 'cat-estudios' : 'cat-personal';
         const item = document.createElement('div');
-        item.className = `task-card-item ${t.completed ? 'completed' : ''}`;
-        item.innerText = `${t.time} ${t.title}`;
+        item.className = `task-card-item ${catClass} ${t.completed ? 'completed' : ''}`;
+        
+        const prefix = t.category === 'estudios' ? '📚' : '👤';
+        item.innerText = `${prefix} ${t.time} ${t.title}`;
+        
         item.onclick = (e) => {
           e.stopPropagation();
           abrirModalTarea(t);
@@ -335,7 +340,7 @@ function renderizarCalendario() {
         cell.appendChild(item);
       });
 
-      // Clic en la celda vacía: Crear nueva tarea
+      // Clic en celda vacía para crear tarea
       cell.onclick = () => abrirModalTarea({ date: fechaISO, time: horaStr });
       grid.appendChild(cell);
     });
@@ -343,7 +348,7 @@ function renderizarCalendario() {
 }
 
 // =======================================================
-// GESTIÓN DE RUTINAS HABITUALES (SIDEBAR & MODAL)
+// GESTIÓN DE RUTINAS HABITUALES
 // =======================================================
 function renderizarHabitualesSidebar() {
   const listContainer = document.getElementById('side-habitual-list');
@@ -390,7 +395,6 @@ function abrirModalHabitual(habitualExistente = {}) {
 
   if (!modal) return;
 
-  // Limpiar checkboxes
   dayCheckboxes.forEach(cb => cb.checked = false);
 
   if (habitualExistente.id) {
@@ -412,7 +416,6 @@ function abrirModalHabitual(habitualExistente = {}) {
     inputTitle.value = '';
     inputStart.value = '10:00';
     inputEnd.value = '11:00';
-    // Por defecto Lunes a Viernes
     ['1', '2', '3', '4', '5'].forEach(dayVal => {
       const targetCb = document.querySelector(`input[name="habitual-day"][value="${dayVal}"]`);
       if (targetCb) targetCb.checked = true;
@@ -445,7 +448,6 @@ function configurarModalHabitualForm() {
       const title = document.getElementById('habitual-title-input').value.trim();
       const startTime = document.getElementById('habitual-start-input').value;
       const endTime = document.getElementById('habitual-end-input').value;
-      
       const selectedDays = Array.from(document.querySelectorAll('input[name="habitual-day"]:checked')).map(cb => cb.value);
 
       if (!title || selectedDays.length === 0) {
@@ -494,13 +496,14 @@ function configurarModalHabitualForm() {
 }
 
 // =======================================================
-// MODAL TAREA PUNTUAL (CREAR Y EDITAR)
+// MODAL TAREA PUNTUAL (CON CATEGORÍA)
 // =======================================================
 function abrirModalTarea(tareaExistente = {}) {
   const modal = document.getElementById('modal-task');
   const modalTitle = document.getElementById('modal-task-header-title');
   const inputId = document.getElementById('task-id');
   const inputTitle = document.getElementById('task-title-input');
+  const inputCategory = document.getElementById('task-category-input');
   const inputDate = document.getElementById('task-date-input');
   const inputTime = document.getElementById('task-time-input');
   const btnDelete = document.getElementById('btn-delete-task');
@@ -513,6 +516,7 @@ function abrirModalTarea(tareaExistente = {}) {
     modalTitle.innerText = "Editar Tarea";
     inputId.value = tareaExistente.id;
     inputTitle.value = tareaExistente.title || '';
+    if (inputCategory) inputCategory.value = tareaExistente.category || 'personal';
     inputDate.value = tareaExistente.date || hoyStr;
     inputTime.value = tareaExistente.time || '09:00';
     btnDelete.style.display = 'block';
@@ -520,6 +524,7 @@ function abrirModalTarea(tareaExistente = {}) {
     modalTitle.innerText = "Nueva Tarea";
     inputId.value = '';
     inputTitle.value = '';
+    if (inputCategory) inputCategory.value = 'personal';
     inputDate.value = tareaExistente.date || hoyStr;
     inputTime.value = tareaExistente.time || '09:00';
     btnDelete.style.display = 'none';
@@ -546,6 +551,7 @@ function configurarModalTareaForm() {
       e.preventDefault();
       const id = document.getElementById('task-id').value;
       const title = document.getElementById('task-title-input').value.trim();
+      const category = document.getElementById('task-category-input').value;
       const date = document.getElementById('task-date-input').value;
       const time = document.getElementById('task-time-input').value;
 
@@ -557,6 +563,7 @@ function configurarModalTareaForm() {
         const idx = tareas.findIndex(t => t.id === id);
         if (idx !== -1) {
           tareas[idx].title = title;
+          tareas[idx].category = category;
           tareas[idx].date = date;
           tareas[idx].time = time;
         }
@@ -564,6 +571,7 @@ function configurarModalTareaForm() {
         tareas.push({
           id: Date.now().toString(),
           title,
+          category,
           date,
           time,
           completed: false
@@ -606,7 +614,6 @@ function iniciarComprobadorNotificaciones() {
     const habituales = JSON.parse(localStorage.getItem('myday_habitual') || '[]');
     let cambios = false;
 
-    // Avisos tareas puntuales
     tareas.forEach((t) => {
       if (!t.time || t.completed || t.date !== hoyStr) return;
       if (t.time === horaActual && t.lastNotified !== hoyStr) {
@@ -616,7 +623,6 @@ function iniciarComprobadorNotificaciones() {
       }
     });
 
-    // Avisos rutinas habituales
     habituales.forEach((h) => {
       if (!h.startTime || !(h.days || []).includes(dayOfWeekStr)) return;
       if (h.startTime === horaActual && h.lastNotified !== hoyStr) {

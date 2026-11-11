@@ -66,8 +66,17 @@
           <textarea id="desktop-quick-notes" class="quick-notes-area" placeholder="Escribe notas, enlaces o pendientes rápidos aquí..."></textarea>
         </div>
 
-        <!-- 3. Atajos de Teclado -->
+        <!-- 3. Leyenda de Categorías y Atajos -->
         <div class="side-card" style="background: var(--bg-primary);">
+          <div class="side-card-title" style="margin-bottom: 8px;">
+            🏷️ Categorías
+          </div>
+          <div style="font-size: 0.8rem; display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px;">
+            <span style="display:flex; align-items:center; gap:8px;"><span style="width:12px; height:12px; border-radius:3px; background:#2563eb; display:inline-block;"></span> Personal</span>
+            <span style="display:flex; align-items:center; gap:8px;"><span style="width:12px; height:12px; border-radius:3px; background:#10b981; display:inline-block;"></span> Estudios</span>
+            <span style="display:flex; align-items:center; gap:8px;"><span style="width:12px; height:12px; border-radius:3px; background:#9333ea; display:inline-block;"></span> Rutina Habitual</span>
+          </div>
+
           <div class="side-card-title" style="margin-bottom: 8px;">
             ⌨️ Atajos de Teclado
           </div>
@@ -93,10 +102,20 @@
       </div>
       <form id="form-task" style="display:flex; flex-direction:column; gap:14px;">
         <input type="hidden" id="task-id">
+        
         <div>
           <label style="font-size:0.85rem; font-weight:600; display:block; margin-bottom:4px;">Título de la Tarea</label>
           <input type="text" id="task-title-input" required style="width:100%; padding:10px 12px; border-radius:8px; font-family:inherit;" placeholder="Ej. Examen de Redes">
         </div>
+
+        <div>
+          <label style="font-size:0.85rem; font-weight:600; display:block; margin-bottom:4px;">Categoría</label>
+          <select id="task-category-input" style="width:100%; padding:9px 12px; border-radius:8px; font-family:inherit; cursor:pointer;">
+            <option value="personal">👤 Personal (Azul)</option>
+            <option value="estudios">📚 Estudios (Verde)</option>
+          </select>
+        </div>
+
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
           <div>
             <label style="font-size:0.85rem; font-weight:600; display:block; margin-bottom:4px;">Fecha</label>
@@ -107,6 +126,7 @@
             <input type="time" id="task-time-input" required style="width:100%; padding:8px 12px; border-radius:8px; font-family:inherit;">
           </div>
         </div>
+
         <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
           <button type="button" id="btn-delete-task" style="padding:8px 16px; border-radius:8px; background:#ef4444; color:#fff; border:none; cursor:pointer; font-weight:600; display:none;">Eliminar</button>
           <div style="display:flex; gap:8px; margin-left:auto;">

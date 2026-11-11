@@ -144,37 +144,45 @@ body {
   background: var(--bg-past-day);
 }
 
-/* Tarjeta de Tarea Puntual */
+/* Tarjeta de Tarea Base */
 .task-card-item {
-  background: #dbeafe;
-  border-left: 3px solid #2563eb;
   padding: 4px 6px;
   border-radius: 4px;
   font-size: 0.75rem;
   font-weight: 600;
-  color: #1e40af;
   margin-bottom: 4px;
   cursor: pointer;
+  transition: opacity 0.2s, transform 0.1s;
 }
-[data-theme="dark"] .task-card-item {
+.task-card-item:hover {
+  transform: translateY(-1px);
+}
+
+/* Categoría: Personal (Azul) */
+.task-card-item.cat-personal {
+  background: #dbeafe;
+  border-left: 3px solid #2563eb;
+  color: #1e40af;
+}
+[data-theme="dark"] .task-card-item.cat-personal {
   background: #1e3a8a;
   border-left-color: #60a5fa;
   color: #bfdbfe;
 }
 
-.task-card-item.completed {
-  background: #e2e8f0;
-  border-left-color: #94a3b8;
-  color: #64748b;
-  text-decoration: line-through;
+/* Categoría: Estudios (Verde Esmeralda) */
+.task-card-item.cat-estudios {
+  background: #d1fae5;
+  border-left: 3px solid #10b981;
+  color: #047857;
 }
-[data-theme="dark"] .task-card-item.completed {
-  background: #334155;
-  border-left-color: #64748b;
-  color: #94a3b8;
+[data-theme="dark"] .task-card-item.cat-estudios {
+  background: #064e3b;
+  border-left-color: #34d399;
+  color: #a7f3d0;
 }
 
-/* Tarjeta de Tarea Habitual / Rutina (Púrpura) */
+/* Rutina Habitual (Púrpura) */
 .task-card-item.habitual {
   background: #f3e8ff;
   border-left: 3px solid #9333ea;
@@ -186,7 +194,21 @@ body {
   color: #f3e8ff;
 }
 
-/* Selector de Días de la Semana (Checkboxes estilo Chips) */
+/* Tareas completadas */
+.task-card-item.completed {
+  background: #e2e8f0 !important;
+  border-left-color: #94a3b8 !important;
+  color: #64748b !important;
+  text-decoration: line-through;
+  opacity: 0.7;
+}
+[data-theme="dark"] .task-card-item.completed {
+  background: #334155 !important;
+  border-left-color: #64748b !important;
+  color: #94a3b8 !important;
+}
+
+/* Selector de Días de la Semana */
 .day-chips-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
