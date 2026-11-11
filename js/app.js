@@ -1,5 +1,5 @@
 // =======================================================
-// MYSELF — MOTOR PRINCIPAL CON CATEGORÍAS (PERSONAL & ESTUDIOS)
+// MYSELF — MOTOR PRINCIPAL (HORA INICIO Y FIN PARA TAREAS)
 // =======================================================
 
 let fechaActual = new Date();
@@ -141,7 +141,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnExport) {
     btnExport.addEventListener('click', () => {
       const backupData = {
-        version: '5.0',
+        version: '6.0',
         timestamp: new Date().toISOString(),
         myday_tasks: localStorage.getItem('myday_tasks') || '[]',
         myday_habitual: localStorage.getItem('myday_habitual') || '[]',
@@ -221,13 +221,21 @@ function aplicarTema(tema) {
 }
 
 // =======================================================
-// REJILLA SEMANAL (CON CATEGORÍAS PERSONAL / ESTUDIOS)
+// REJILLA SEMANAL (CON RANGO INICIO - FIN PARA TAREAS)
 // =======================================================
 function obtenerLunes(d) {
   const date = new Date(d);
   const day = date.getDay();
   const diff = date.getDate() - day + (day === 0 ? -6 : 1);
   return new Date(date.setDate(diff));
+}
+
+function calcularHoraFinPorDefecto(horaInicioStr) {
+  if (!horaInicioStr) return '10:00';
+  const parts = horaInicioStr.split(':');
+  let h = parseInt(parts[0], 10) + 1;
+  if (h > 23) h = 23;
+  return `${String(h).padStart(2, '0')}:${parts[1] || '00'}`;
 }
 
 function renderizarCalendario() {
@@ -288,6 +296,7 @@ function renderizarCalendario() {
   // 3. Filas por Hora (De 07:00 a 23:00)
   for (let h = 7; h <= 23; h++) {
     const horaStr = `${String(h).padStart(2, '0')}:00`;
+    const horaFinSlot = `${String(h + 1).padStart(2, '0')}:00`;
 
     const cellHora = document.createElement('div');
     cellHora.className = 'grid-time-cell';
@@ -322,16 +331,29 @@ function renderizarCalendario() {
         cell.appendChild(itemHab);
       });
 
-      // B. Mostrar Tareas Puntuales por Categoría
-      const tareasSlot = tareas.filter(t => t.date === fechaISO && t.time && t.time.startsWith(String(h).padStart(2, '0')));
+      // B. Mostrar Tareas Puntuales considerando Hora Inicio y Hora Fin
+      const tareasSlot = tareas.filter(t => {
+        if (t.date !== fechaISO) return false;
+        const sTime = t.startTime || t.time || '09:00';
+        const eTime = t.endTime || calcularHoraFinPorDefecto(sTime);
+
+        const startH = parseInt(sTime.split(':')[0], 10);
+        const endH = parseInt(eTime.split(':')[0], 10);
+        const maxH = endH > startH ? endH : startH + 1;
+
+        return h >= startH && h < maxH;
+      });
 
       tareasSlot.forEach(t => {
+        const sTime = t.startTime || t.time || '09:00';
+        const eTime = t.endTime || calcularHoraFinPorDefecto(sTime);
+
         const catClass = t.category === 'estudios' ? 'cat-estudios' : 'cat-personal';
         const item = document.createElement('div');
         item.className = `task-card-item ${catClass} ${t.completed ? 'completed' : ''}`;
         
         const prefix = t.category === 'estudios' ? '📚' : '👤';
-        item.innerText = `${prefix} ${t.time} ${t.title}`;
+        item.innerText = `${prefix} ${sTime}-${eTime} ${t.title}`;
         
         item.onclick = (e) => {
           e.stopPropagation();
@@ -341,7 +363,7 @@ function renderizarCalendario() {
       });
 
       // Clic en celda vacía para crear tarea
-      cell.onclick = () => abrirModalTarea({ date: fechaISO, time: horaStr });
+      cell.onclick = () => abrirModalTarea({ date: fechaISO, startTime: horaStr, endTime: horaFinSlot });
       grid.appendChild(cell);
     });
   }
@@ -496,7 +518,7 @@ function configurarModalHabitualForm() {
 }
 
 // =======================================================
-// MODAL TAREA PUNTUAL (CON CATEGORÍA)
+// MODAL TAREA PUNTUAL (CON HORA INICIO Y HORA FIN)
 // =======================================================
 function abrirModalTarea(tareaExistente = {}) {
   const modal = document.getElementById('modal-task');
@@ -505,12 +527,15 @@ function abrirModalTarea(tareaExistente = {}) {
   const inputTitle = document.getElementById('task-title-input');
   const inputCategory = document.getElementById('task-category-input');
   const inputDate = document.getElementById('task-date-input');
-  const inputTime = document.getElementById('task-time-input');
+  const inputStart = document.getElementById('task-start-input');
+  const inputEnd = document.getElementById('task-end-input');
   const btnDelete = document.getElementById('btn-delete-task');
 
   if (!modal) return;
 
   const hoyStr = new Date().toISOString().slice(0, 10);
+  const startDefault = tareaExistente.startTime || tareaExistente.time || '09:00';
+  const endDefault = tareaExistente.endTime || calcularHoraFinPorDefecto(startDefault);
 
   if (tareaExistente.id) {
     modalTitle.innerText = "Editar Tarea";
@@ -518,7 +543,8 @@ function abrirModalTarea(tareaExistente = {}) {
     inputTitle.value = tareaExistente.title || '';
     if (inputCategory) inputCategory.value = tareaExistente.category || 'personal';
     inputDate.value = tareaExistente.date || hoyStr;
-    inputTime.value = tareaExistente.time || '09:00';
+    inputStart.value = startDefault;
+    inputEnd.value = endDefault;
     btnDelete.style.display = 'block';
   } else {
     modalTitle.innerText = "Nueva Tarea";
@@ -526,7 +552,8 @@ function abrirModalTarea(tareaExistente = {}) {
     inputTitle.value = '';
     if (inputCategory) inputCategory.value = 'personal';
     inputDate.value = tareaExistente.date || hoyStr;
-    inputTime.value = tareaExistente.time || '09:00';
+    inputStart.value = startDefault;
+    inputEnd.value = endDefault;
     btnDelete.style.display = 'none';
   }
 
@@ -553,7 +580,8 @@ function configurarModalTareaForm() {
       const title = document.getElementById('task-title-input').value.trim();
       const category = document.getElementById('task-category-input').value;
       const date = document.getElementById('task-date-input').value;
-      const time = document.getElementById('task-time-input').value;
+      const startTime = document.getElementById('task-start-input').value;
+      const endTime = document.getElementById('task-end-input').value;
 
       if (!title) return;
 
@@ -565,7 +593,9 @@ function configurarModalTareaForm() {
           tareas[idx].title = title;
           tareas[idx].category = category;
           tareas[idx].date = date;
-          tareas[idx].time = time;
+          tareas[idx].startTime = startTime;
+          tareas[idx].endTime = endTime;
+          tareas[idx].time = startTime; // Compatibilidad hacia atrás
         }
       } else {
         tareas.push({
@@ -573,7 +603,9 @@ function configurarModalTareaForm() {
           title,
           category,
           date,
-          time,
+          startTime,
+          endTime,
+          time: startTime,
           completed: false
         });
       }
@@ -615,9 +647,10 @@ function iniciarComprobadorNotificaciones() {
     let cambios = false;
 
     tareas.forEach((t) => {
-      if (!t.time || t.completed || t.date !== hoyStr) return;
-      if (t.time === horaActual && t.lastNotified !== hoyStr) {
-        new Notification(`⏰ ${t.title}`, { body: `Es la hora de tu tarea (${t.time}).` });
+      const sTime = t.startTime || t.time;
+      if (!sTime || t.completed || t.date !== hoyStr) return;
+      if (sTime === horaActual && t.lastNotified !== hoyStr) {
+        new Notification(`⏰ ${t.title}`, { body: `Comienza tu tarea (${sTime} - ${t.endTime || ''}).` });
         t.lastNotified = hoyStr;
         cambios = true;
       }
