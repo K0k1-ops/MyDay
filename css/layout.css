@@ -1,10 +1,11 @@
 /* =======================================================
-   LAYOUT & GRID STYLES (DESKTOP-FIRST MULTIPANEL & DARK MODE)
+   LAYOUT & GRID STYLES (DESKTOP-FIRST CONTINUOUS COLUMNS)
    ======================================================= */
 
 :root {
   --sidebar-width: 260px;
   --header-height: 60px;
+  --hour-height: 60px; /* 1 hora = 60px -> 1 minuto = 1px */
   --bg-primary: #f8fafc;
   --bg-surface: #ffffff;
   --text-primary: #0f172a;
@@ -89,89 +90,124 @@ body {
   min-width: 0;
 }
 
-/* Rejilla Semanal */
+/* ESTRUCTURA DE PARRILLA CONTINUA POR COLUMNAS */
 .week-grid-wrapper {
   background: var(--bg-surface);
   border: 1px solid var(--border-color);
   border-radius: 12px;
-  overflow-x: auto;
+  overflow: hidden;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
-.week-grid {
+.grid-header-row {
   display: grid;
-  grid-template-columns: 60px repeat(7, minmax(140px, 1fr));
-  min-width: 900px;
+  grid-template-columns: 60px repeat(7, 1fr);
+  border-bottom: 2px solid var(--border-color);
+  background: var(--bg-surface);
+  position: sticky;
+  top: 0;
+  z-index: 20;
 }
 
-/* Celdas de la Rejilla */
 .grid-header-cell {
   padding: 10px;
   text-align: center;
-  border-bottom: 2px solid var(--border-color);
-  background: var(--bg-surface);
   border-left: 1px solid var(--border-color);
 }
 .grid-header-cell.is-today {
   background: var(--bg-today);
-  border-bottom: 2px solid var(--border-today);
+  color: var(--text-today);
 }
 .grid-header-cell.is-past {
   background: var(--bg-past-day);
-  border-bottom: 2px solid var(--border-past-day);
+  color: var(--text-past-day);
 }
 
-.grid-time-cell {
-  height: 60px;
+.grid-body-scroll {
+  max-height: calc(100vh - 160px);
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: 60px repeat(7, 1fr);
+  position: relative;
+}
+
+.grid-time-column {
+  display: flex;
+  flex-direction: column;
+}
+
+.grid-time-slot {
+  height: var(--hour-height);
   font-size: 0.75rem;
   font-weight: 600;
   color: var(--text-secondary);
-  text-align: center;
-  border-bottom: 1px solid var(--border-color);
-  background: var(--bg-surface);
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.grid-slot-cell {
-  height: 60px; /* 1 minuto = 1 píxel de altura exacta */
   border-bottom: 1px solid var(--border-color);
-  border-left: 1px solid var(--border-color);
-  position: relative;
-  padding: 0;
   background: var(--bg-surface);
   box-sizing: border-box;
 }
-.grid-slot-cell.is-past {
+
+.grid-day-column {
+  position: relative;
+  height: calc(17 * var(--hour-height)); /* 17 horas (07:00 a 23:00) */
+  border-left: 1px solid var(--border-color);
+}
+.grid-day-column.is-past {
   background: var(--bg-past-day);
 }
 
-/* Tarjeta de Tarea Base */
+.grid-hour-bg-slot {
+  height: var(--hour-height);
+  border-bottom: 1px solid var(--border-color);
+  box-sizing: border-box;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.grid-hour-bg-slot:hover {
+  background: rgba(37, 99, 235, 0.04);
+}
+
+.day-events-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+}
+
+/* Tarjeta de Tarea Proporcional Continuada */
 .task-card-item {
-  border-radius: 4px;
-  font-size: 0.72rem;
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 0.78rem;
   font-weight: 600;
   cursor: pointer;
-  transition: opacity 0.2s, transform 0.1s;
+  pointer-events: auto;
   box-sizing: border-box;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  padding: 2px 6px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.12);
   display: flex;
-  align-items: center;
-  z-index: 2;
+  flex-direction: column;
+  justify-content: flex-start;
+  overflow: hidden;
+  z-index: 5;
+  transition: transform 0.15s, box-shadow 0.15s;
 }
 .task-card-item:hover {
-  transform: scale(1.01);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
   z-index: 10;
 }
 
 /* Categoría: Personal (Azul) */
 .task-card-item.cat-personal {
   background: #dbeafe;
-  border-left: 3px solid #2563eb;
+  border-left: 4px solid #2563eb;
   color: #1e40af;
 }
 [data-theme="dark"] .task-card-item.cat-personal {
@@ -183,7 +219,7 @@ body {
 /* Categoría: Estudios (Verde Esmeralda) */
 .task-card-item.cat-estudios {
   background: #d1fae5;
-  border-left: 3px solid #10b981;
+  border-left: 4px solid #10b981;
   color: #047857;
 }
 [data-theme="dark"] .task-card-item.cat-estudios {
@@ -195,7 +231,7 @@ body {
 /* Rutina Habitual (Púrpura) */
 .task-card-item.habitual {
   background: #f3e8ff;
-  border-left: 3px solid #9333ea;
+  border-left: 4px solid #9333ea;
   color: #6b21a8;
 }
 [data-theme="dark"] .task-card-item.habitual {
@@ -204,7 +240,7 @@ body {
   color: #f3e8ff;
 }
 
-/* Tareas completadas */
+/* Completadas */
 .task-card-item.completed {
   background: #e2e8f0 !important;
   border-left-color: #94a3b8 !important;
@@ -218,7 +254,7 @@ body {
   color: #94a3b8 !important;
 }
 
-/* Selector de Días de la Semana */
+/* Selector de Días */
 .day-chips-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);

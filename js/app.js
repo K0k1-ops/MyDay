@@ -1,8 +1,10 @@
 // =======================================================
-// MYSELF — MOTOR PRINCIPAL (REPRESENTACIÓN MINUTO A MINUTO)
+// MYSELF — MOTOR PRINCIPAL (REJILLA CONTINUA Y UNIFICADA)
 // =======================================================
 
 let fechaActual = new Date();
+const HORA_INICIO_GRID = 7; // 07:00
+const HORA_FIN_GRID = 23;  // 23:00
 
 document.addEventListener('DOMContentLoaded', () => {
   if (window.lucide) lucide.createIcons();
@@ -138,7 +140,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnExport) {
     btnExport.addEventListener('click', () => {
       const backupData = {
-        version: '7.0',
+        version: '8.0',
         timestamp: new Date().toISOString(),
         myday_tasks: localStorage.getItem('myday_tasks') || '[]',
         myday_habitual: localStorage.getItem('myday_habitual') || '[]',
@@ -234,9 +236,6 @@ function calcularHoraFinPorDefecto(horaInicioStr) {
   return `${String(h).padStart(2, '0')}:${parts[1] || '00'}`;
 }
 
-// =======================================================
-// REJILLA SEMANAL (CON POSICIONAMIENTO SUB-HORARIO PRECISO)
-// =======================================================
 function obtenerLunes(d) {
   const date = new Date(d);
   const day = date.getDay();
@@ -244,11 +243,16 @@ function obtenerLunes(d) {
   return new Date(date.setDate(diff));
 }
 
+// =======================================================
+// REJILLA SEMANAL CONTINUA Y UNIFICADA
+// =======================================================
 function renderizarCalendario() {
-  const grid = document.getElementById('calendar-grid');
-  if (!grid) return;
+  const gridHeader = document.getElementById('calendar-grid-header');
+  const gridBody = document.getElementById('calendar-grid-body');
+  if (!gridHeader || !gridBody) return;
 
-  grid.innerHTML = '';
+  gridHeader.innerHTML = '';
+  gridBody.innerHTML = '';
 
   const lunes = obtenerLunes(fechaActual);
   const diasSemana = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
@@ -262,14 +266,13 @@ function renderizarCalendario() {
 
   const hoyStr = new Date().toISOString().slice(0, 10);
 
-  // 1. Header Hora
-  const headerHora = document.createElement('div');
-  headerHora.className = 'grid-time-cell';
-  headerHora.style.fontWeight = '700';
-  headerHora.innerText = 'Hora';
-  grid.appendChild(headerHora);
+  // 1. DIBUJAR CABECERA DE DÍAS (Sticky)
+  const emptyCorner = document.createElement('div');
+  emptyCorner.className = 'grid-header-cell';
+  emptyCorner.style.fontWeight = '700';
+  emptyCorner.innerText = 'Hora';
+  gridHeader.appendChild(emptyCorner);
 
-  // 2. Encabezados Días
   fechasSemana.forEach((fecha, idx) => {
     const fechaStr = fecha.toISOString().slice(0, 10);
     const esHoy = fechaStr === hoyStr;
@@ -277,147 +280,117 @@ function renderizarCalendario() {
 
     const headerDia = document.createElement('div');
     headerDia.className = `grid-header-cell ${esHoy ? 'is-today' : ''} ${esPasado ? 'is-past' : ''}`;
-
-    let colorSub = 'var(--text-secondary)';
-    let colorNum = 'var(--text-primary)';
-
-    if (esHoy) {
-      colorSub = 'var(--text-today)';
-      colorNum = 'var(--text-today)';
-    } else if (esPasado) {
-      colorSub = 'var(--text-past-day)';
-      colorNum = 'var(--text-past-day)';
-    }
-
     headerDia.innerHTML = `
-      <div style="font-size: 0.75rem; font-weight: 700; color: ${colorSub}; text-transform: uppercase;">${diasSemana[idx]}</div>
-      <div style="font-size: 1rem; font-weight: 800; color: ${colorNum};">${fecha.getDate()}</div>
+      <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase;">${diasSemana[idx]}</div>
+      <div style="font-size: 1rem; font-weight: 800; margin-top:2px;">${fecha.getDate()}</div>
     `;
-    grid.appendChild(headerDia);
+    gridHeader.appendChild(headerDia);
   });
 
+  // 2. DIBUJAR COLUMNA DE HORAS (IZQUIERDA)
+  const timeColumn = document.createElement('div');
+  timeColumn.className = 'grid-time-column';
+  for (let h = HORA_INICIO_GRID; h <= HORA_FIN_GRID; h++) {
+    const slot = document.createElement('div');
+    slot.className = 'grid-time-slot';
+    slot.innerText = `${String(h).padStart(2, '0')}:00`;
+    timeColumn.appendChild(slot);
+  }
+  gridBody.appendChild(timeColumn);
+
+  // 3. DIBUJAR COLUMNAS POR DÍA CON CAPA DE EVENTOS CONTINUA
   const tareas = JSON.parse(localStorage.getItem('myday_tasks') || '[]');
   const habituales = JSON.parse(localStorage.getItem('myday_habitual') || '[]');
+  const minInicioGrid = HORA_INICIO_GRID * 60;
 
-  // 3. Filas por Hora (De 07:00 a 23:00)
-  for (let h = 7; h <= 23; h++) {
-    const slotStartMin = h * 60;
-    const slotEndMin = (h + 1) * 60;
-    const horaStr = `${String(h).padStart(2, '0')}:00`;
-    const horaFinSlot = `${String(h + 1).padStart(2, '0')}:00`;
+  fechasSemana.forEach((fecha) => {
+    const fechaISO = fecha.toISOString().slice(0, 10);
+    const dayOfWeek = fecha.getDay();
+    const esPasado = fechaISO < hoyStr;
 
-    const cellHora = document.createElement('div');
-    cellHora.className = 'grid-time-cell';
-    cellHora.innerText = horaStr;
-    grid.appendChild(cellHora);
+    const dayColumn = document.createElement('div');
+    dayColumn.className = `grid-day-column ${esPasado ? 'is-past' : ''}`;
 
-    fechasSemana.forEach((fecha) => {
-      const fechaISO = fecha.toISOString().slice(0, 10);
-      const dayOfWeek = fecha.getDay();
-      const esPasado = fechaISO < hoyStr;
+    // Líneas de fondo por hora
+    for (let h = HORA_INICIO_GRID; h <= HORA_FIN_GRID; h++) {
+      const bgSlot = document.createElement('div');
+      bgSlot.className = 'grid-hour-bg-slot';
+      const horaStr = `${String(h).padStart(2, '0')}:00`;
+      const horaFinSlot = `${String(h + 1).padStart(2, '0')}:00`;
 
-      const cell = document.createElement('div');
-      cell.className = `grid-slot-cell ${esPasado ? 'is-past' : ''}`;
+      bgSlot.onclick = () => abrirModalTarea({ date: fechaISO, startTime: horaStr, endTime: horaFinSlot });
+      dayColumn.appendChild(bgSlot);
+    }
 
-      // A. Mostrar Tareas Habituales (Rutinas) con Posicionamiento Exacto
-      const habitualesCoincidentes = habituales.filter(hab => {
-        if (!hab.days || !hab.days.includes(String(dayOfWeek))) return false;
-        const startMin = timeToMinutes(hab.startTime || '10:00');
-        const endMin = timeToMinutes(hab.endTime || '11:00');
-        return startMin < slotEndMin && endMin > slotStartMin;
-      });
+    // Capa independiente para los eventos continuos
+    const eventsLayer = document.createElement('div');
+    eventsLayer.className = 'day-events-layer';
 
-      habitualesCoincidentes.forEach(hab => {
-        const startMin = timeToMinutes(hab.startTime || '10:00');
-        const endMin = timeToMinutes(hab.endTime || '11:00');
-        
-        const taskSlotStart = Math.max(startMin, slotStartMin);
-        const taskSlotEnd = Math.min(endMin, slotEndMin);
+    // A. Renderizar Rutinas Habituales
+    const habitualesCoincidentes = habituales.filter(hab => hab.days && hab.days.includes(String(dayOfWeek)));
+    habitualesCoincidentes.forEach(hab => {
+      const startMin = timeToMinutes(hab.startTime || '10:00');
+      const endMin = timeToMinutes(hab.endTime || '11:00');
+      
+      const topPx = Math.max(0, startMin - minInicioGrid);
+      const heightPx = endMin - startMin;
 
-        const offsetMin = taskSlotStart - slotStartMin;
-        const durationMin = taskSlotEnd - taskSlotStart;
-
+      if (heightPx > 0) {
         const itemHab = document.createElement('div');
         itemHab.className = 'task-card-item habitual';
-        itemHab.style.position = 'absolute';
-        itemHab.style.top = `${offsetMin}px`;
-        itemHab.style.height = `${Math.max(durationMin, 18)}px`;
-        itemHab.style.left = '2px';
-        itemHab.style.right = '2px';
-
-        const isFirstSegment = taskSlotStart === startMin;
-        if (isFirstSegment) {
-          itemHab.innerText = `🔄 ${hab.startTime}-${hab.endTime} ${hab.title}`;
-        } else {
-          itemHab.innerText = `↳ ${hab.title} (${hab.endTime})`;
-          itemHab.style.opacity = '0.85';
-        }
-
+        itemHab.style.top = `${topPx}px`;
+        itemHab.style.height = `${heightPx}px`;
+        itemHab.innerHTML = `
+          <div style="font-weight:700;">🔄 ${hab.title}</div>
+          <div style="font-size:0.7rem; opacity:0.9;">${hab.startTime} - ${hab.endTime}</div>
+        `;
         itemHab.onclick = (e) => {
           e.stopPropagation();
           abrirModalHabitual(hab);
         };
-        cell.appendChild(itemHab);
-      });
+        eventsLayer.appendChild(itemHab);
+      }
+    });
 
-      // B. Mostrar Tareas Puntuales con Posicionamiento Exacto
-      const tareasSlot = tareas.filter(t => {
-        if (t.date !== fechaISO) return false;
-        const sTime = t.startTime || t.time || '09:00';
-        const eTime = t.endTime || calcularHoraFinPorDefecto(sTime);
-        const startMin = timeToMinutes(sTime);
-        const endMin = timeToMinutes(eTime);
-        return startMin < slotEndMin && endMin > slotStartMin;
-      });
+    // B. Renderizar Tareas Puntuales Unificadas
+    const tareasDia = tareas.filter(t => t.date === fechaISO);
+    tareasDia.forEach(t => {
+      const sTime = t.startTime || t.time || '09:00';
+      const eTime = t.endTime || calcularHoraFinPorDefecto(sTime);
+      const startMin = timeToMinutes(sTime);
+      const endMin = timeToMinutes(eTime);
 
-      tareasSlot.forEach(t => {
-        const sTime = t.startTime || t.time || '09:00';
-        const eTime = t.endTime || calcularHoraFinPorDefecto(sTime);
-        const startMin = timeToMinutes(sTime);
-        const endMin = timeToMinutes(eTime);
+      const topPx = Math.max(0, startMin - minInicioGrid);
+      const heightPx = endMin - startMin;
 
-        const taskSlotStart = Math.max(startMin, slotStartMin);
-        const taskSlotEnd = Math.min(endMin, slotEndMin);
-
-        const offsetMin = taskSlotStart - slotStartMin; // Desplazamiento desde la parte superior de la celda
-        const durationMin = taskSlotEnd - taskSlotStart; // Altura relativa a los minutos
-
+      if (heightPx > 0) {
         const catClass = t.category === 'estudios' ? 'cat-estudios' : 'cat-personal';
         const item = document.createElement('div');
         item.className = `task-card-item ${catClass} ${t.completed ? 'completed' : ''}`;
+        item.style.top = `${topPx}px`;
+        item.style.height = `${heightPx}px`;
         
-        item.style.position = 'absolute';
-        item.style.top = `${offsetMin}px`;
-        item.style.height = `${Math.max(durationMin, 18)}px`; // Altura mínima para legibilidad
-        item.style.left = '2px';
-        item.style.right = '2px';
-
         const prefix = t.category === 'estudios' ? '📚' : '👤';
-        const isFirstSegment = taskSlotStart === startMin;
-
-        if (isFirstSegment) {
-          item.innerText = `${prefix} ${sTime}-${eTime} ${t.title}`;
-        } else {
-          item.innerText = `↳ ${t.title} (${eTime})`;
-          item.style.opacity = '0.85';
-        }
-
+        item.innerHTML = `
+          <div style="font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${prefix} ${t.title}</div>
+          <div style="font-size:0.7rem; opacity:0.9;">${sTime} - ${eTime}</div>
+        `;
+        
         item.onclick = (e) => {
           e.stopPropagation();
           abrirModalTarea(t);
         };
-        cell.appendChild(item);
-      });
-
-      // Clic en celda vacía para crear tarea
-      cell.onclick = () => abrirModalTarea({ date: fechaISO, startTime: horaStr, endTime: horaFinSlot });
-      grid.appendChild(cell);
+        eventsLayer.appendChild(item);
+      }
     });
-  }
+
+    dayColumn.appendChild(eventsLayer);
+    gridBody.appendChild(dayColumn);
+  });
 }
 
 // =======================================================
-// GESTIÓN DE RUTINAS HABITUALES
+// GESTIÓN DE RUTINAS HABITUALES (SIDEBAR & MODAL)
 // =======================================================
 function renderizarHabitualesSidebar() {
   const listContainer = document.getElementById('side-habitual-list');
