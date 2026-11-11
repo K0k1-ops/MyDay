@@ -78,40 +78,7 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* Navegación Inferior en Móvil */
-.mobile-nav {
-  display: flex;
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: var(--bottom-nav-height);
-  background-color: var(--bg-surface-glass);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-top: 1px solid var(--border-color);
-  justify-content: space-around;
-  align-items: center;
-  z-index: 20;
-  padding-bottom: env(safe-area-inset-bottom);
-}
-
-.mobile-link {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--text-muted);
-  width: 25%;
-}
-
-.mobile-link.active {
-  color: var(--accent-primary);
-}
-
-/* Botón Flotante (+ FAB) */
+/* Botón Flotante (+ FAB) Base */
 .fab-button {
   position: fixed;
   bottom: calc(var(--bottom-nav-height) + 16px);
@@ -133,8 +100,8 @@
   transform: scale(0.92);
 }
 
-/* Adaptación a Pantallas Grandes */
-@media (min-width: 768px) {
+/* Adaptación a Pantallas Grandes (Escritorio / Tablet) */
+@media (min-width: 769px) {
   .sidebar { display: flex; }
   .mobile-nav { display: none; }
   .main-content {
@@ -144,5 +111,109 @@
   .fab-button {
     bottom: 32px;
     right: 32px;
+  }
+}
+
+/* ==========================================
+   OPTIMIZACIONES EXCLUSIVAS PARA MÓVIL (≤768px)
+   ========================================== */
+@media (max-width: 768px) {
+  
+  /* 1. Prevenir zoom automático al enfocar inputs */
+  input, select, textarea, button {
+    font-size: 16px !important;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* 2. Área principal con margen inferior para no solapar la barra */
+  .main-content {
+    padding: 16px 16px 100px 16px !important;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* 3. Navegación inferior nativa (5 botones distribuidos) */
+  .mobile-nav {
+    display: grid !important;
+    grid-template-columns: repeat(5, 1fr);
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 64px;
+    background: var(--bg-surface, #ffffff);
+    border-top: 1px solid var(--border-color, #e5e7eb);
+    align-items: center;
+    padding-bottom: env(safe-area-inset-bottom);
+    z-index: 1000;
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.05);
+  }
+
+  .mobile-link {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    background: none;
+    border: none;
+    color: var(--text-muted, #6b7280);
+    font-size: 0.70rem;
+    font-weight: 500;
+    padding: 6px 0;
+    width: 100% !important; /* Corregido para ocupar su celda completa */
+    cursor: pointer;
+    transition: color 0.15s ease;
+  }
+
+  .mobile-link i, 
+  .mobile-link svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .mobile-link.active {
+    color: var(--accent-primary, #0066ff);
+    font-weight: 700;
+  }
+
+  /* 4. Botón flotante (+) por encima de la barra inferior */
+  .fab-button {
+    position: fixed;
+    bottom: calc(76px + env(safe-area-inset-bottom));
+    right: 20px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--accent-primary, #0066ff);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 14px rgba(0, 102, 255, 0.4);
+    z-index: 999;
+  }
+
+  /* 5. Modales estilo "Bottom Sheet" (Emergen desde abajo) */
+  .modal-backdrop {
+    display: flex;
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .modal-container {
+    width: 100%;
+    max-width: 100%;
+    border-radius: 20px 20px 0 0;
+    max-height: 85vh;
+    overflow-y: auto;
+    animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    padding: 20px;
+  }
+
+  @keyframes slideUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
   }
 }
