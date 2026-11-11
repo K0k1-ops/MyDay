@@ -1,5 +1,5 @@
 // =======================================================
-// MYSELF — MOTOR PRINCIPAL (COLISIONES & FILTROS DE CATEGORÍA)
+// MYSELF — MOTOR PRINCIPAL (HORA ACTUAL, DRAG & DROP Y VERDE OSCURO)
 // =======================================================
 
 let fechaActual = new Date();
@@ -20,6 +20,12 @@ document.addEventListener('DOMContentLoaded', () => {
   configurarFiltros();
   renderizarCalendario();
   renderizarHabitualesSidebar();
+  autoScrollAHoraActual();
+
+  // Actualizar la línea de hora actual cada 30 segundos
+  setInterval(() => {
+    renderizarIndicadorHoraActual();
+  }, 30000);
 
   // --------------------------------------------------
   // A. EVENTOS DE CABECERA Y NAVEGACIÓN
@@ -48,6 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
     btnToday.addEventListener('click', () => {
       fechaActual = new Date();
       renderizarCalendario();
+      autoScrollAHoraActual();
     });
   }
 
@@ -89,6 +96,7 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         fechaActual = new Date();
         renderizarCalendario();
+        autoScrollAHoraActual();
         break;
       case 'arrowleft':
         e.preventDefault();
@@ -142,7 +150,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnExport) {
     btnExport.addEventListener('click', () => {
       const backupData = {
-        version: '10.0',
+        version: '11.0',
         timestamp: new Date().toISOString(),
         myday_tasks: localStorage.getItem('myday_tasks') || '[]',
         myday_habitual: localStorage.getItem('myday_habitual') || '[]',
@@ -234,15 +242,57 @@ function configurarFiltros() {
 }
 
 // =======================================================
-// ALGORITMO DE GESTIÓN DE SOLAPAMIENTOS (SUBCOLUMNAS)
+// HORA ACTUAL Y AUTO-SCROLL
+// =======================================================
+function autoScrollAHoraActual() {
+  const gridBody = document.getElementById('calendar-grid-body');
+  if (!gridBody) return;
+  const ahora = new Date();
+  const minActuales = ahora.getHours() * 60 + ahora.getMinutes();
+  const minInicioGrid = HORA_INICIO_GRID * 60;
+  
+  if (minActuales >= minInicioGrid && minActuales <= HORA_FIN_GRID * 60) {
+    const scrollPos = (minActuales - minInicioGrid) - 100;
+    gridBody.scrollTop = Math.max(0, scrollPos);
+  }
+}
+
+function renderizarIndicadorHoraActual() {
+  // Eliminar indicador previo
+  const prevLine = document.querySelector('.current-time-line');
+  if (prevLine) prevLine.remove();
+
+  const hoyStr = new Date().toISOString().slice(0, 10);
+  const columnaHoy = document.querySelector(`.grid-day-column[data-date="${hoyStr}"]`);
+  if (!columnaHoy) return;
+
+  const ahora = new Date();
+  const minActuales = ahora.getHours() * 60 + ahora.getMinutes();
+  const minInicioGrid = HORA_INICIO_GRID * 60;
+
+  if (minActuales >= minInicioGrid && minActuales <= (HORA_FIN_GRID + 1) * 60) {
+    const topPx = minActuales - minInicioGrid;
+    const timeLine = document.createElement('div');
+    timeLine.className = 'current-time-line';
+    timeLine.style.top = `${topPx}px`;
+
+    const eventsLayer = columnaHoy.querySelector('.day-events-layer');
+    if (eventsLayer) {
+      eventsLayer.appendChild(timeLine);
+    } else {
+      columnaHoy.appendChild(timeLine);
+    }
+  }
+}
+
+// =======================================================
+// ALGORITMO DE GESTIÓN DE SOLAPAMIENTOS
 // =======================================================
 function procesarSolapamientos(eventos) {
   if (!eventos || eventos.length === 0) return [];
 
-  // 1. Ordenar por inicio (y si empatan, más largo primero)
   eventos.sort((a, b) => a.startMin - b.startMin || (b.endMin - b.startMin) - (a.endMin - a.startMin));
 
-  // 2. Agrupar en clústeres que se solapan entre sí
   const clusters = [];
   let currentCluster = [];
   let clusterEnd = 0;
@@ -262,10 +312,9 @@ function procesarSolapamientos(eventos) {
   });
   if (currentCluster.length > 0) clusters.push(currentCluster);
 
-  // 3. Asignar columnas dentro de cada clúster
   const resultado = [];
   clusters.forEach(cluster => {
-    const columnas = []; // Almacena la hora de fin de la última tarea puesta en cada columna
+    const columnas = [];
 
     cluster.forEach(ev => {
       let colAsignada = -1;
@@ -318,7 +367,7 @@ function obtenerLunes(d) {
 }
 
 // =======================================================
-// REJILLA SEMANAL CONTINUA CON Detección DE COLISIONES
+// REJILLA SEMANAL CONTINUA + DRAG & DROP INTEGRADO
 // =======================================================
 function renderizarCalendario() {
   const gridHeader = document.getElementById('calendar-grid-header');
@@ -384,6 +433,75 @@ function renderizarCalendario() {
 
     const dayColumn = document.createElement('div');
     dayColumn.className = `grid-day-column ${esPasado ? 'is-past' : ''}`;
+    dayColumn.setAttribute('data-date', fechaISO);
+
+    // EVENTOS DE DRAG & DROP SOBRE LA COLUMNA DEL DÍA
+    dayColumn.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dayColumn.classList.add('drag-over');
+    });
+
+    dayColumn.addEventListener('dragleave', () => {
+      dayColumn.classList.remove('drag-over');
+    });
+
+    dayColumn.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dayColumn.classList.remove('drag-over');
+
+      const rawData = e.dataTransfer.getData('text/plain');
+      if (!rawData) return;
+
+      try {
+        const payload = JSON.parse(rawData);
+        const rect = dayColumn.getBoundingClientRect();
+        const offsetY = e.clientY - rect.top;
+
+        // Calcular minuto exacto y redondear al tramo de 15 minutos más cercano
+        let dropMin = minInicioGrid + offsetY;
+        dropMin = Math.round(dropMin / 15) * 15;
+
+        const maxStart = HORA_FIN_GRID * 60 - payload.durationMin;
+        if (dropMin < minInicioGrid) dropMin = minInicioGrid;
+        if (dropMin > maxStart) dropMin = maxStart;
+
+        const newEndMin = dropMin + payload.durationMin;
+
+        const formatMinToStr = (m) => {
+          const h = Math.floor(m / 60);
+          const mins = m % 60;
+          return `${String(h).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+        };
+
+        const newStartStr = formatMinToStr(dropMin);
+        const newEndStr = formatMinToStr(newEndMin);
+
+        if (payload.type === 'task') {
+          let tList = JSON.parse(localStorage.getItem('myday_tasks') || '[]');
+          const idx = tList.findIndex(t => t.id === payload.id);
+          if (idx !== -1) {
+            tList[idx].date = fechaISO;
+            tList[idx].startTime = newStartStr;
+            tList[idx].endTime = newEndStr;
+            tList[idx].time = newStartStr;
+            localStorage.setItem('myday_tasks', JSON.stringify(tList));
+            renderizarCalendario();
+          }
+        } else if (payload.type === 'habitual') {
+          let hList = JSON.parse(localStorage.getItem('myday_habitual') || '[]');
+          const idx = hList.findIndex(h => h.id === payload.id);
+          if (idx !== -1) {
+            hList[idx].startTime = newStartStr;
+            hList[idx].endTime = newEndStr;
+            localStorage.setItem('myday_habitual', JSON.stringify(hList));
+            renderizarHabitualesSidebar();
+            renderizarCalendario();
+          }
+        }
+      } catch (err) {
+        console.error('Error al procesar soltado de tarea:', err);
+      }
+    });
 
     for (let h = HORA_INICIO_GRID; h <= HORA_FIN_GRID; h++) {
       const bgSlot = document.createElement('div');
@@ -398,7 +516,6 @@ function renderizarCalendario() {
     const eventsLayer = document.createElement('div');
     eventsLayer.className = 'day-events-layer';
 
-    // A. Filtrar y Normalizar Eventos del Día
     const eventosDia = [];
 
     // Rutinas
@@ -448,7 +565,6 @@ function renderizarCalendario() {
       });
     }
 
-    // B. Procesar Solapamientos y Renderizar en Capa
     const eventosProcesados = procesarSolapamientos(eventosDia);
 
     eventosProcesados.forEach(ev => {
@@ -467,17 +583,52 @@ function renderizarCalendario() {
         item.style.top = `${topPx}px`;
         item.style.height = `${heightPx}px`;
 
-        // Posicionamiento horizontal dinámico por colisión
+        // Posicionamiento horizontal por colisión
         const widthPct = 100 / ev.totalCols;
         const leftPct = widthPct * ev.colIndex;
         item.style.left = `calc(${leftPct}% + 2px)`;
         item.style.width = `calc(${widthPct}% - 4px)`;
 
+        // HABILITAR DRAG AND DROP EN LA TARJETA
+        item.setAttribute('draggable', 'true');
+        item.addEventListener('dragstart', (e) => {
+          e.dataTransfer.setData('text/plain', JSON.stringify({
+            id: ev.raw.id,
+            type: ev.type,
+            durationMin: ev.endMin - ev.startMin
+          }));
+          item.classList.add('dragging');
+        });
+        item.addEventListener('dragend', () => {
+          item.classList.remove('dragging');
+        });
+
         const prefix = ev.type === 'habitual' ? '🔄' : (ev.category === 'estudios' ? '📚' : '👤');
+        const isChecked = ev.completed ? '✓' : '';
+
+        // ESTRUCTURA CON BOTÓN DE COMPLETAR EN 1 CLIC
         item.innerHTML = `
-          <div style="font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${prefix} ${ev.title}</div>
-          <div style="font-size:0.7rem; opacity:0.9;">${ev.startTime} - ${ev.endTime}</div>
+          <div style="display:flex; align-items:center; gap:4px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+            ${ev.type === 'task' ? `<span class="task-check-btn" title="Completar">${isChecked}</span>` : ''}
+            <span>${prefix} ${ev.title}</span>
+          </div>
+          <div style="font-size:0.7rem; opacity:0.9; margin-top:2px;">${ev.startTime} - ${ev.endTime}</div>
         `;
+
+        // Evento para el botón rápido de completado
+        const checkBtn = item.querySelector('.task-check-btn');
+        if (checkBtn) {
+          checkBtn.onclick = (e) => {
+            e.stopPropagation();
+            let tList = JSON.parse(localStorage.getItem('myday_tasks') || '[]');
+            const idx = tList.findIndex(t => t.id === ev.raw.id);
+            if (idx !== -1) {
+              tList[idx].completed = !tList[idx].completed;
+              localStorage.setItem('myday_tasks', JSON.stringify(tList));
+              renderizarCalendario();
+            }
+          };
+        }
 
         item.onclick = (e) => {
           e.stopPropagation();
@@ -492,6 +643,9 @@ function renderizarCalendario() {
     dayColumn.appendChild(eventsLayer);
     gridBody.appendChild(dayColumn);
   });
+
+  // Renderizar la línea roja de hora actual si el día de hoy es visible
+  renderizarIndicadorHoraActual();
 }
 
 // =======================================================
