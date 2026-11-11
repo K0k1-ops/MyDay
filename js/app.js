@@ -1,8 +1,9 @@
 // =======================================================
-// MYSELF — MOTOR PRINCIPAL (CON SELECTOR RÁPIDO DE DÍAS)
+// MYSELF — MOTOR PRINCIPAL (COLISIONES & FILTROS DE CATEGORÍA)
 // =======================================================
 
 let fechaActual = new Date();
+let filtroCategoriaActual = 'todas';
 const HORA_INICIO_GRID = 7;
 const HORA_FIN_GRID = 23;
 
@@ -16,6 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   inicializarTema();
+  configurarFiltros();
   renderizarCalendario();
   renderizarHabitualesSidebar();
 
@@ -140,7 +142,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnExport) {
     btnExport.addEventListener('click', () => {
       const backupData = {
-        version: '9.0',
+        version: '10.0',
         timestamp: new Date().toISOString(),
         myday_tasks: localStorage.getItem('myday_tasks') || '[]',
         myday_habitual: localStorage.getItem('myday_habitual') || '[]',
@@ -203,7 +205,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // =======================================================
-// MODO NOCHE
+// MODO NOCHE & FILTROS
 // =======================================================
 function inicializarTema() {
   const temaGuardado = localStorage.getItem('myday_theme') || 'light';
@@ -217,6 +219,78 @@ function aplicarTema(tema) {
   if (btnTheme) {
     btnTheme.innerText = tema === 'dark' ? '☀️' : '🌙';
   }
+}
+
+function configurarFiltros() {
+  const filterBtns = document.querySelectorAll('.filter-btn');
+  filterBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      filterBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      filtroCategoriaActual = btn.getAttribute('data-filter');
+      renderizarCalendario();
+    });
+  });
+}
+
+// =======================================================
+// ALGORITMO DE GESTIÓN DE SOLAPAMIENTOS (SUBCOLUMNAS)
+// =======================================================
+function procesarSolapamientos(eventos) {
+  if (!eventos || eventos.length === 0) return [];
+
+  // 1. Ordenar por inicio (y si empatan, más largo primero)
+  eventos.sort((a, b) => a.startMin - b.startMin || (b.endMin - b.startMin) - (a.endMin - a.startMin));
+
+  // 2. Agrupar en clústeres que se solapan entre sí
+  const clusters = [];
+  let currentCluster = [];
+  let clusterEnd = 0;
+
+  eventos.forEach(ev => {
+    if (currentCluster.length === 0) {
+      currentCluster.push(ev);
+      clusterEnd = ev.endMin;
+    } else if (ev.startMin < clusterEnd) {
+      currentCluster.push(ev);
+      if (ev.endMin > clusterEnd) clusterEnd = ev.endMin;
+    } else {
+      clusters.push(currentCluster);
+      currentCluster = [ev];
+      clusterEnd = ev.endMin;
+    }
+  });
+  if (currentCluster.length > 0) clusters.push(currentCluster);
+
+  // 3. Asignar columnas dentro de cada clúster
+  const resultado = [];
+  clusters.forEach(cluster => {
+    const columnas = []; // Almacena la hora de fin de la última tarea puesta en cada columna
+
+    cluster.forEach(ev => {
+      let colAsignada = -1;
+      for (let i = 0; i < columnas.length; i++) {
+        if (columnas[i] <= ev.startMin) {
+          colAsignada = i;
+          columnas[i] = ev.endMin;
+          break;
+        }
+      }
+      if (colAsignada === -1) {
+        colAsignada = columnas.length;
+        columnas.push(ev.endMin);
+      }
+      ev.colIndex = colAsignada;
+    });
+
+    const totalCols = columnas.length;
+    cluster.forEach(ev => {
+      ev.totalCols = totalCols;
+      resultado.push(ev);
+    });
+  });
+
+  return resultado;
 }
 
 // =======================================================
@@ -244,7 +318,7 @@ function obtenerLunes(d) {
 }
 
 // =======================================================
-// REJILLA SEMANAL CONTINUA
+// REJILLA SEMANAL CONTINUA CON Detección DE COLISIONES
 // =======================================================
 function renderizarCalendario() {
   const gridHeader = document.getElementById('calendar-grid-header');
@@ -266,7 +340,7 @@ function renderizarCalendario() {
 
   const hoyStr = new Date().toISOString().slice(0, 10);
 
-  // 1. Cabecera
+  // 1. Cabecera Días
   const emptyCorner = document.createElement('div');
   emptyCorner.className = 'grid-header-cell';
   emptyCorner.style.fontWeight = '700';
@@ -287,7 +361,7 @@ function renderizarCalendario() {
     gridHeader.appendChild(headerDia);
   });
 
-  // 2. Horas
+  // 2. Columna Horas
   const timeColumn = document.createElement('div');
   timeColumn.className = 'grid-time-column';
   for (let h = HORA_INICIO_GRID; h <= HORA_FIN_GRID; h++) {
@@ -298,7 +372,7 @@ function renderizarCalendario() {
   }
   gridBody.appendChild(timeColumn);
 
-  // 3. Días y Tareas
+  // 3. Obtener Datos
   const tareas = JSON.parse(localStorage.getItem('myday_tasks') || '[]');
   const habituales = JSON.parse(localStorage.getItem('myday_habitual') || '[]');
   const minInicioGrid = HORA_INICIO_GRID * 60;
@@ -324,60 +398,93 @@ function renderizarCalendario() {
     const eventsLayer = document.createElement('div');
     eventsLayer.className = 'day-events-layer';
 
-    // Rutinas
-    const habitualesCoincidentes = habituales.filter(hab => hab.days && hab.days.includes(String(dayOfWeek)));
-    habitualesCoincidentes.forEach(hab => {
-      const startMin = timeToMinutes(hab.startTime || '10:00');
-      const endMin = timeToMinutes(hab.endTime || '11:00');
-      
-      const topPx = Math.max(0, startMin - minInicioGrid);
-      const heightPx = endMin - startMin;
+    // A. Filtrar y Normalizar Eventos del Día
+    const eventosDia = [];
 
-      if (heightPx > 0) {
-        const itemHab = document.createElement('div');
-        itemHab.className = 'task-card-item habitual';
-        itemHab.style.top = `${topPx}px`;
-        itemHab.style.height = `${heightPx}px`;
-        itemHab.innerHTML = `
-          <div style="font-weight:700;">🔄 ${hab.title}</div>
-          <div style="font-size:0.7rem; opacity:0.9;">${hab.startTime} - ${hab.endTime}</div>
-        `;
-        itemHab.onclick = (e) => {
-          e.stopPropagation();
-          abrirModalHabitual(hab);
-        };
-        eventsLayer.appendChild(itemHab);
-      }
-    });
+    // Rutinas
+    if (filtroCategoriaActual === 'todas' || filtroCategoriaActual === 'rutinas') {
+      const habs = habituales.filter(hab => hab.days && hab.days.includes(String(dayOfWeek)));
+      habs.forEach(hab => {
+        const startMin = timeToMinutes(hab.startTime || '10:00');
+        const endMin = timeToMinutes(hab.endTime || '11:00');
+        if (endMin > startMin) {
+          eventosDia.push({
+            type: 'habitual',
+            title: hab.title,
+            startTime: hab.startTime || '10:00',
+            endTime: hab.endTime || '11:00',
+            startMin,
+            endMin,
+            raw: hab
+          });
+        }
+      });
+    }
 
     // Tareas Puntuales
-    const tareasDia = tareas.filter(t => t.date === fechaISO);
-    tareasDia.forEach(t => {
-      const sTime = t.startTime || t.time || '09:00';
-      const eTime = t.endTime || calcularHoraFinPorDefecto(sTime);
-      const startMin = timeToMinutes(sTime);
-      const endMin = timeToMinutes(eTime);
+    if (filtroCategoriaActual !== 'rutinas') {
+      let ts = tareas.filter(t => t.date === fechaISO);
+      if (filtroCategoriaActual !== 'todas') {
+        ts = ts.filter(t => (t.category || 'personal') === filtroCategoriaActual);
+      }
+      ts.forEach(t => {
+        const sTime = t.startTime || t.time || '09:00';
+        const eTime = t.endTime || calcularHoraFinPorDefecto(sTime);
+        const startMin = timeToMinutes(sTime);
+        const endMin = timeToMinutes(eTime);
+        if (endMin > startMin) {
+          eventosDia.push({
+            type: 'task',
+            category: t.category || 'personal',
+            completed: t.completed,
+            title: t.title,
+            startTime: sTime,
+            endTime: eTime,
+            startMin,
+            endMin,
+            raw: t
+          });
+        }
+      });
+    }
 
-      const topPx = Math.max(0, startMin - minInicioGrid);
-      const heightPx = endMin - startMin;
+    // B. Procesar Solapamientos y Renderizar en Capa
+    const eventosProcesados = procesarSolapamientos(eventosDia);
+
+    eventosProcesados.forEach(ev => {
+      const topPx = Math.max(0, ev.startMin - minInicioGrid);
+      const heightPx = ev.endMin - ev.startMin;
 
       if (heightPx > 0) {
-        const catClass = t.category === 'estudios' ? 'cat-estudios' : 'cat-personal';
+        let catClass = 'habitual';
+        if (ev.type === 'task') {
+          catClass = ev.category === 'estudios' ? 'cat-estudios' : 'cat-personal';
+          if (ev.completed) catClass += ' completed';
+        }
+
         const item = document.createElement('div');
-        item.className = `task-card-item ${catClass} ${t.completed ? 'completed' : ''}`;
+        item.className = `task-card-item ${catClass}`;
         item.style.top = `${topPx}px`;
         item.style.height = `${heightPx}px`;
-        
-        const prefix = t.category === 'estudios' ? '📚' : '👤';
+
+        // Posicionamiento horizontal dinámico por colisión
+        const widthPct = 100 / ev.totalCols;
+        const leftPct = widthPct * ev.colIndex;
+        item.style.left = `calc(${leftPct}% + 2px)`;
+        item.style.width = `calc(${widthPct}% - 4px)`;
+
+        const prefix = ev.type === 'habitual' ? '🔄' : (ev.category === 'estudios' ? '📚' : '👤');
         item.innerHTML = `
-          <div style="font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${prefix} ${t.title}</div>
-          <div style="font-size:0.7rem; opacity:0.9;">${sTime} - ${eTime}</div>
+          <div style="font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${prefix} ${ev.title}</div>
+          <div style="font-size:0.7rem; opacity:0.9;">${ev.startTime} - ${ev.endTime}</div>
         `;
-        
+
         item.onclick = (e) => {
           e.stopPropagation();
-          abrirModalTarea(t);
+          if (ev.type === 'habitual') abrirModalHabitual(ev.raw);
+          else abrirModalTarea(ev.raw);
         };
+
         eventsLayer.appendChild(item);
       }
     });
@@ -536,7 +643,7 @@ function configurarModalHabitualForm() {
 }
 
 // =======================================================
-// MODAL TAREA PUNTUAL (CON SELECTOR DE DÍAS RÁPIDO)
+// MODAL TAREA PUNTUAL
 // =======================================================
 function abrirModalTarea(tareaExistente = {}) {
   const modal = document.getElementById('modal-task');
@@ -557,7 +664,6 @@ function abrirModalTarea(tareaExistente = {}) {
   const startDefault = tareaExistente.startTime || tareaExistente.time || '09:00';
   const endDefault = tareaExistente.endTime || calcularHoraFinPorDefecto(startDefault);
 
-  // Renderizar 7 botones de la semana visible actual
   if (quickDaysContainer) {
     quickDaysContainer.innerHTML = '';
     const lunes = obtenerLunes(fechaActual);
@@ -583,7 +689,6 @@ function abrirModalTarea(tareaExistente = {}) {
 
       chip.onclick = () => {
         inputDate.value = dateISO;
-        // Marcar visualmente el chip seleccionado
         Array.from(quickDaysContainer.children).forEach(c => {
           c.style.background = 'var(--bg-primary)';
           c.style.color = 'var(--text-primary)';

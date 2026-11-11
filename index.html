@@ -36,6 +36,18 @@
       
       <!-- COLUMNA IZQUIERDA: Calendario Semanal -->
       <main class="calendar-main-column">
+        
+        <!-- BARRA DE FILTROS DE ENFOQUE -->
+        <div class="calendar-toolbar">
+          <span style="font-size:0.85rem; font-weight:700; color:var(--text-secondary);">Filtrar vista:</span>
+          <div style="display:flex; gap:6px;">
+            <button class="filter-btn active" data-filter="todas">Todas</button>
+            <button class="filter-btn" data-filter="personal">👤 Personal</button>
+            <button class="filter-btn" data-filter="estudios">📚 Estudios</button>
+            <button class="filter-btn" data-filter="rutinas">🔄 Rutinas</button>
+          </div>
+        </div>
+
         <div class="week-grid-wrapper">
           <div id="calendar-grid-header" class="grid-header-row">
             <!-- Días de la semana -->
