@@ -1,5 +1,5 @@
 // =======================================================
-// MYSELF — MOTOR PRINCIPAL (HORA INICIO Y FIN PARA TAREAS)
+// MYSELF — MOTOR PRINCIPAL (REPRESENTACIÓN MINUTO A MINUTO)
 // =======================================================
 
 let fechaActual = new Date();
@@ -13,10 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
       .catch(err => console.error('Error SW:', err));
   }
 
-  // 1. Cargar Modo Noche
   inicializarTema();
-
-  // 2. Renderizar Calendario y Sidebar
   renderizarCalendario();
   renderizarHabitualesSidebar();
 
@@ -141,7 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnExport) {
     btnExport.addEventListener('click', () => {
       const backupData = {
-        version: '6.0',
+        version: '7.0',
         timestamp: new Date().toISOString(),
         myday_tasks: localStorage.getItem('myday_tasks') || '[]',
         myday_habitual: localStorage.getItem('myday_habitual') || '[]',
@@ -221,13 +218,12 @@ function aplicarTema(tema) {
 }
 
 // =======================================================
-// REJILLA SEMANAL (CON RANGO INICIO - FIN PARA TAREAS)
+// FUNCIONES AUXILIARES DE TIEMPO
 // =======================================================
-function obtenerLunes(d) {
-  const date = new Date(d);
-  const day = date.getDay();
-  const diff = date.getDate() - day + (day === 0 ? -6 : 1);
-  return new Date(date.setDate(diff));
+function timeToMinutes(timeStr) {
+  if (!timeStr) return 0;
+  const parts = timeStr.split(':');
+  return (parseInt(parts[0], 10) || 0) * 60 + (parseInt(parts[1], 10) || 0);
 }
 
 function calcularHoraFinPorDefecto(horaInicioStr) {
@@ -236,6 +232,16 @@ function calcularHoraFinPorDefecto(horaInicioStr) {
   let h = parseInt(parts[0], 10) + 1;
   if (h > 23) h = 23;
   return `${String(h).padStart(2, '0')}:${parts[1] || '00'}`;
+}
+
+// =======================================================
+// REJILLA SEMANAL (CON POSICIONAMIENTO SUB-HORARIO PRECISO)
+// =======================================================
+function obtenerLunes(d) {
+  const date = new Date(d);
+  const day = date.getDay();
+  const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+  return new Date(date.setDate(diff));
 }
 
 function renderizarCalendario() {
@@ -295,6 +301,8 @@ function renderizarCalendario() {
 
   // 3. Filas por Hora (De 07:00 a 23:00)
   for (let h = 7; h <= 23; h++) {
+    const slotStartMin = h * 60;
+    const slotEndMin = (h + 1) * 60;
     const horaStr = `${String(h).padStart(2, '0')}:00`;
     const horaFinSlot = `${String(h + 1).padStart(2, '0')}:00`;
 
@@ -311,19 +319,40 @@ function renderizarCalendario() {
       const cell = document.createElement('div');
       cell.className = `grid-slot-cell ${esPasado ? 'is-past' : ''}`;
 
-      // A. Mostrar Tareas Habituales (Rutinas)
+      // A. Mostrar Tareas Habituales (Rutinas) con Posicionamiento Exacto
       const habitualesCoincidentes = habituales.filter(hab => {
         if (!hab.days || !hab.days.includes(String(dayOfWeek))) return false;
-        const startH = parseInt((hab.startTime || '10:00').split(':')[0], 10);
-        const endH = parseInt((hab.endTime || '11:00').split(':')[0], 10);
-        const maxH = endH > startH ? endH : startH + 1;
-        return h >= startH && h < maxH;
+        const startMin = timeToMinutes(hab.startTime || '10:00');
+        const endMin = timeToMinutes(hab.endTime || '11:00');
+        return startMin < slotEndMin && endMin > slotStartMin;
       });
 
       habitualesCoincidentes.forEach(hab => {
+        const startMin = timeToMinutes(hab.startTime || '10:00');
+        const endMin = timeToMinutes(hab.endTime || '11:00');
+        
+        const taskSlotStart = Math.max(startMin, slotStartMin);
+        const taskSlotEnd = Math.min(endMin, slotEndMin);
+
+        const offsetMin = taskSlotStart - slotStartMin;
+        const durationMin = taskSlotEnd - taskSlotStart;
+
         const itemHab = document.createElement('div');
         itemHab.className = 'task-card-item habitual';
-        itemHab.innerText = `🔄 ${hab.startTime}-${hab.endTime} ${hab.title}`;
+        itemHab.style.position = 'absolute';
+        itemHab.style.top = `${offsetMin}px`;
+        itemHab.style.height = `${Math.max(durationMin, 18)}px`;
+        itemHab.style.left = '2px';
+        itemHab.style.right = '2px';
+
+        const isFirstSegment = taskSlotStart === startMin;
+        if (isFirstSegment) {
+          itemHab.innerText = `🔄 ${hab.startTime}-${hab.endTime} ${hab.title}`;
+        } else {
+          itemHab.innerText = `↳ ${hab.title} (${hab.endTime})`;
+          itemHab.style.opacity = '0.85';
+        }
+
         itemHab.onclick = (e) => {
           e.stopPropagation();
           abrirModalHabitual(hab);
@@ -331,30 +360,48 @@ function renderizarCalendario() {
         cell.appendChild(itemHab);
       });
 
-      // B. Mostrar Tareas Puntuales considerando Hora Inicio y Hora Fin
+      // B. Mostrar Tareas Puntuales con Posicionamiento Exacto
       const tareasSlot = tareas.filter(t => {
         if (t.date !== fechaISO) return false;
         const sTime = t.startTime || t.time || '09:00';
         const eTime = t.endTime || calcularHoraFinPorDefecto(sTime);
-
-        const startH = parseInt(sTime.split(':')[0], 10);
-        const endH = parseInt(eTime.split(':')[0], 10);
-        const maxH = endH > startH ? endH : startH + 1;
-
-        return h >= startH && h < maxH;
+        const startMin = timeToMinutes(sTime);
+        const endMin = timeToMinutes(eTime);
+        return startMin < slotEndMin && endMin > slotStartMin;
       });
 
       tareasSlot.forEach(t => {
         const sTime = t.startTime || t.time || '09:00';
         const eTime = t.endTime || calcularHoraFinPorDefecto(sTime);
+        const startMin = timeToMinutes(sTime);
+        const endMin = timeToMinutes(eTime);
+
+        const taskSlotStart = Math.max(startMin, slotStartMin);
+        const taskSlotEnd = Math.min(endMin, slotEndMin);
+
+        const offsetMin = taskSlotStart - slotStartMin; // Desplazamiento desde la parte superior de la celda
+        const durationMin = taskSlotEnd - taskSlotStart; // Altura relativa a los minutos
 
         const catClass = t.category === 'estudios' ? 'cat-estudios' : 'cat-personal';
         const item = document.createElement('div');
         item.className = `task-card-item ${catClass} ${t.completed ? 'completed' : ''}`;
         
+        item.style.position = 'absolute';
+        item.style.top = `${offsetMin}px`;
+        item.style.height = `${Math.max(durationMin, 18)}px`; // Altura mínima para legibilidad
+        item.style.left = '2px';
+        item.style.right = '2px';
+
         const prefix = t.category === 'estudios' ? '📚' : '👤';
-        item.innerText = `${prefix} ${sTime}-${eTime} ${t.title}`;
-        
+        const isFirstSegment = taskSlotStart === startMin;
+
+        if (isFirstSegment) {
+          item.innerText = `${prefix} ${sTime}-${eTime} ${t.title}`;
+        } else {
+          item.innerText = `↳ ${t.title} (${eTime})`;
+          item.style.opacity = '0.85';
+        }
+
         item.onclick = (e) => {
           e.stopPropagation();
           abrirModalTarea(t);
@@ -518,7 +565,7 @@ function configurarModalHabitualForm() {
 }
 
 // =======================================================
-// MODAL TAREA PUNTUAL (CON HORA INICIO Y HORA FIN)
+// MODAL TAREA PUNTUAL
 // =======================================================
 function abrirModalTarea(tareaExistente = {}) {
   const modal = document.getElementById('modal-task');
@@ -595,7 +642,7 @@ function configurarModalTareaForm() {
           tareas[idx].date = date;
           tareas[idx].startTime = startTime;
           tareas[idx].endTime = endTime;
-          tareas[idx].time = startTime; // Compatibilidad hacia atrás
+          tareas[idx].time = startTime;
         }
       } else {
         tareas.push({

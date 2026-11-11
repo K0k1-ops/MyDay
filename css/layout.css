@@ -122,23 +122,26 @@ body {
 }
 
 .grid-time-cell {
-  padding: 8px;
+  height: 60px;
   font-size: 0.75rem;
   font-weight: 600;
   color: var(--text-secondary);
   text-align: center;
   border-bottom: 1px solid var(--border-color);
   background: var(--bg-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .grid-slot-cell {
-  min-height: 48px;
+  height: 60px; /* 1 minuto = 1 píxel de altura exacta */
   border-bottom: 1px solid var(--border-color);
   border-left: 1px solid var(--border-color);
-  padding: 4px;
   position: relative;
-  transition: background 0.2s;
+  padding: 0;
   background: var(--bg-surface);
+  box-sizing: border-box;
 }
 .grid-slot-cell.is-past {
   background: var(--bg-past-day);
@@ -146,16 +149,23 @@ body {
 
 /* Tarjeta de Tarea Base */
 .task-card-item {
-  padding: 4px 6px;
   border-radius: 4px;
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 600;
-  margin-bottom: 4px;
   cursor: pointer;
   transition: opacity 0.2s, transform 0.1s;
+  box-sizing: border-box;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  padding: 2px 6px;
+  display: flex;
+  align-items: center;
+  z-index: 2;
 }
 .task-card-item:hover {
-  transform: translateY(-1px);
+  transform: scale(1.01);
+  z-index: 10;
 }
 
 /* Categoría: Personal (Azul) */
