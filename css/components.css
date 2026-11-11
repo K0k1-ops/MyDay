@@ -362,9 +362,10 @@
   background: rgba(0, 102, 255, 0.08);
 }
 
+/* DÍAS PASADOS: CAMBIADO DE ROJO A VERDE CLARITO */
 .week-head-cell.past-day-cell {
-  color: #ef4444;
-  background-color: rgba(239, 68, 68, 0.08);
+  color: #10b981;
+  background-color: rgba(16, 185, 129, 0.1);
 }
 
 .week-grid-body {
@@ -385,10 +386,12 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
+  position: relative;
 }
 
+/* CELDAS PASADAS: VERDE CLARITO SUAVE */
 .week-day-cell.past-day-cell {
-  background-color: rgba(239, 68, 68, 0.04);
+  background-color: rgba(16, 185, 129, 0.05);
 }
 
 /* Colores de Categorías */
@@ -398,11 +401,6 @@
 .bg-cat-casa     { background-color: #F59E0B !important; }
 .bg-cat-compras  { background-color: #EC4899 !important; }
 .bg-cat-otros    { background-color: #64748B !important; }
-
-/* Posicionamiento relativo necesario para la línea flotante */
-.week-day-cell {
-  position: relative;
-}
 
 /* Indicador de Hora Actual en tiempo real */
 .current-time-line {
@@ -426,7 +424,7 @@
   background-color: #ef4444;
 }
 
-/* Estilos e interacción para Arrastrar y Soltar (Drag & Drop) */
+/* Estilos para Drag & Drop */
 .task-item[draggable="true"] {
   cursor: grab;
   user-select: none;
@@ -444,15 +442,20 @@
 }
 
 /* =======================================================
-   CORRECCIONES DE USABILIDAD MÓVIL (CALENDARIO Y NAVEGACIÓN)
+   CORRECCIONES EXCLUSIVAS DE USABILIDAD MÓVIL (≤768px)
    ======================================================= */
 @media (max-width: 768px) {
 
-  /* 1. NAVEGACIÓN INFERIOR: FORZAR 5 BOTONES */
+  /* 1. NAVEGACIÓN INFERIOR (5 BOTONES DISTRIBUIDOS) */
   .mobile-nav {
     display: grid !important;
     grid-template-columns: repeat(5, 1fr) !important;
     width: 100% !important;
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 1000 !important;
   }
 
   .mobile-link {
@@ -460,56 +463,78 @@
     min-width: 0 !important;
   }
 
-  /* 2. VISTA SEMANAL: SCROLL HORIZONTAL SUAVE PARA VER DE LUNES A DOMINGO */
-  /* Hace que la cuadrícula no se estruje y se pueda deslizar lateralmente */
-  #view-today,
-  .week-view-container,
-  .calendar-grid-wrapper {
+  /* 2. CONTENEDOR PRINCIPAL DEL CALENDARIO: SCROLL HORIZONTAL */
+  .week-grid-wrapper {
+    width: 100% !important;
     overflow-x: auto !important;
+    overflow-y: auto !important;
     -webkit-overflow-scrolling: touch;
-    width: 100%;
+    border-radius: var(--radius-lg);
+    background: var(--bg-surface, #ffffff);
   }
 
-  .week-grid,
-  .calendar-table,
-  .schedule-grid {
-    min-width: 650px !important; /* Ancho suficiente para que los 7 días respiren */
-    position: relative;
+  /* 3. ALINEACIÓN EXACTA CABECERA Y CUERPO (ANCHO FIJO 750PX) */
+  .week-grid-header,
+  .week-hour-row {
+    display: grid !important;
+    width: 750px !important;
+    min-width: 750px !important;
+    grid-template-columns: 55px repeat(7, calc((750px - 55px) / 7)) !important;
+    box-sizing: border-box !important;
   }
 
-  /* 3. COLUMNA DE HORAS FIJA AL DESLIZAR */
-  .hours-column,
-  .time-sidebar,
-  .grid-header-time {
+  /* 4. CABECERA FIJA ARRIBA (OPACA PARA NO TAPAR CON TEXTO) */
+  .week-grid-header {
     position: sticky !important;
-    left: 0;
-    background-color: var(--bg-surface, #ffffff);
-    z-index: 10;
-    box-shadow: 2px 0 5px rgba(0,0,0,0.05);
+    top: 0 !important;
+    z-index: 30 !important;
+    background-color: var(--bg-surface, #ffffff) !important;
+    border-bottom: 2px solid var(--border-color, #e5e7eb) !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
   }
 
-  /* 4. ARREGLAR SUPERPOSICIÓN DE TAREAS (DESBORDAMIENTO) */
-  .day-column,
-  .time-slot,
-  .hour-cell {
+  .week-head-cell {
+    background-color: var(--bg-surface, #ffffff) !important;
+    padding: 8px 2px !important;
+    font-size: 0.75rem !important;
+    min-width: 0 !important;
+  }
+
+  /* MANTENER EL TINTE VERDE EN CABECERA MÓVIL SI ES DÍA PASADO */
+  .week-head-cell.past-day-cell {
+    background-color: rgba(16, 185, 129, 0.12) !important;
+    color: #10b981 !important;
+  }
+
+  /* 5. COLUMNA DE HORAS FIJA A LA IZQUIERDA AL DESLIZAR LATERALMENTE */
+  .week-grid-header > *:first-child,
+  .week-hour-row > *:first-child {
+    position: sticky !important;
+    left: 0 !important;
+    z-index: 40 !important;
+    background-color: var(--bg-surface, #ffffff) !important;
+    border-right: 1px solid var(--border-color, #e5e7eb) !important;
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.05);
+  }
+
+  /* 6. CONTROL DE CELDAS Y TAREAS PARA EVITAR DESBORDAMIENTO */
+  .week-day-cell {
     position: relative !important;
-    overflow: hidden; /* Corta la tarea para que no flote sobre otros días o la noche */
+    overflow: hidden !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    padding: 2px !important;
   }
 
-  .task-card,
-  .event-item,
-  .appointment {
-    max-width: 100%;
-    box-sizing: border-box;
-    z-index: 2;
-  }
-
-  /* 5. ENCABEZADOS DE DÍAS (LUN, MAR, MIÉ...) FIJOS ARRIBA */
-  .week-header,
-  .days-header {
-    position: sticky;
-    top: 0;
-    background-color: var(--bg-surface, #ffffff);
-    z-index: 9;
+  .block-item {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    font-size: 0.70rem !important;
+    padding: 3px 4px !important;
+    border-radius: 4px !important;
   }
 }
