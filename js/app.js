@@ -223,3 +223,52 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
+
+// =======================================================
+// REVISOR AUTOMÁTICO DE NOTIFICACIONES Y TAREAS
+// =======================================================
+function iniciarComprobadorNotificaciones() {
+  // Ejecuta la comprobación cada 60 segundos
+  setInterval(() => {
+    // Si el usuario no ha dado permisos de notificación, no hace nada
+    if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+
+    const ahora = new Date();
+    // Formato de hora actual en "HH:MM" (ej: "09:30")
+    const horaActual = `${String(ahora.getHours()).padStart(2, '0')}:${String(ahora.getMinutes()).padStart(2, '0')}`;
+    const hoyStr = ahora.toISOString().slice(0, 10); // YYYY-MM-DD
+
+    // Recupera las tareas del almacenamiento local
+    const tareas = JSON.parse(localStorage.getItem('myday_tasks') || '[]');
+    let cambios = false;
+
+    tareas.forEach((tarea) => {
+      // Notifica si coincide la hora, no está hecha y no ha sido notificada hoy
+      if (
+        tarea.time === horaActual && 
+        !tarea.completed && 
+        tarea.lastNotified !== hoyStr
+      ) {
+        new Notification(`⏰ ${tarea.title || 'Recordatorio'}`, {
+          body: `Es la hora de tu actividad (${horaActual}).`,
+          icon: 'icons/icon-192.png',
+          tag: tarea.id || 'tarea-notif'
+        });
+
+        // Marca que ya se notificó hoy para no repetir en el mismo minuto
+        tarea.lastNotified = hoyStr;
+        cambios = true;
+      }
+    });
+
+    // Guarda el estado actualizado si hubo notificaciones
+    if (cambios) {
+      localStorage.setItem('myday_tasks', JSON.stringify(tareas));
+    }
+  }, 60000); // Revisa cada 60.000 milisegundos (1 minuto)
+}
+
+// Iniciar el comprobador tras cargar la página
+document.addEventListener('DOMContentLoaded', () => {
+  iniciarComprobadorNotificaciones();
+});
