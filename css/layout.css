@@ -1,10 +1,37 @@
 /* =======================================================
-   LAYOUT & GRID STYLES (DESKTOP-FIRST MULTIPANEL)
+   LAYOUT & GRID STYLES (DESKTOP-FIRST MULTIPANEL & DARK MODE)
    ======================================================= */
 
 :root {
   --sidebar-width: 260px;
   --header-height: 60px;
+  --bg-primary: #f8fafc;
+  --bg-surface: #ffffff;
+  --text-primary: #0f172a;
+  --text-secondary: #64748b;
+  --border-color: #e2e8f0;
+  --accent-primary: #2563eb;
+  --bg-past-day: #f0fdf4;
+  --border-past-day: #bbf7d0;
+  --text-past-day: #15803d;
+  --bg-today: #eff6ff;
+  --border-today: #3b82f6;
+  --text-today: #1d4ed8;
+}
+
+[data-theme="dark"] {
+  --bg-primary: #0f172a;
+  --bg-surface: #1e293b;
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --border-color: #334155;
+  --accent-primary: #3b82f6;
+  --bg-past-day: #064e3b22;
+  --border-past-day: #059669;
+  --text-past-day: #34d399;
+  --bg-today: #1e3a8a44;
+  --border-today: #3b82f6;
+  --text-today: #60a5fa;
 }
 
 * {
@@ -15,24 +42,25 @@
 
 body {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-  background-color: var(--bg-primary, #f8fafc);
-  color: var(--text-primary, #0f172a);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
   min-height: 100vh;
   overflow-x: hidden;
+  transition: background-color 0.2s, color 0.2s;
 }
 
-/* Layout Principal de Escritorio */
+/* Layout Principal */
 .app-container {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
 }
 
-/* Navbar / Header */
+/* Encabezado */
 .app-header {
   height: var(--header-height);
-  background-color: var(--bg-surface, #ffffff);
-  border-bottom: 1px solid var(--border-color, #e2e8f0);
+  background-color: var(--bg-surface);
+  border-bottom: 1px solid var(--border-color);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -42,7 +70,7 @@ body {
   z-index: 50;
 }
 
-/* Contenedor Principal: Rejilla 2 Columnas (PC) */
+/* Contenedor Multipanel 2 Columnas */
 .main-content-wrapper {
   display: grid;
   grid-template-columns: 1fr 340px;
@@ -58,14 +86,14 @@ body {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  min-width: 0; /* Evita desbordamiento en grid */
+  min-width: 0;
 }
 
 /* Rejilla Semanal */
 .week-grid-wrapper {
-  background: var(--bg-surface, #ffffff);
-  border: 1px solid var(--border-color, #e2e8f0);
-  border-radius: var(--radius-lg, 12px);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
   overflow-x: auto;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
@@ -76,7 +104,77 @@ body {
   min-width: 900px;
 }
 
-/* Panel Lateral Fijo para Escritorio */
+/* Celdas de la Rejilla */
+.grid-header-cell {
+  padding: 10px;
+  text-align: center;
+  border-bottom: 2px solid var(--border-color);
+  background: var(--bg-surface);
+  border-left: 1px solid var(--border-color);
+}
+.grid-header-cell.is-today {
+  background: var(--bg-today);
+  border-bottom: 2px solid var(--border-today);
+}
+.grid-header-cell.is-past {
+  background: var(--bg-past-day);
+  border-bottom: 2px solid var(--border-past-day);
+}
+
+.grid-time-cell {
+  padding: 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-align: center;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-surface);
+}
+
+.grid-slot-cell {
+  min-height: 48px;
+  border-bottom: 1px solid var(--border-color);
+  border-left: 1px solid var(--border-color);
+  padding: 4px;
+  position: relative;
+  transition: background 0.2s;
+  background: var(--bg-surface);
+}
+.grid-slot-cell.is-past {
+  background: var(--bg-past-day);
+}
+
+/* Tarjeta de Tarea en Calendario */
+.task-card-item {
+  background: #dbeafe;
+  border-left: 3px solid #2563eb;
+  padding: 4px 6px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #1e40af;
+  margin-bottom: 4px;
+  cursor: pointer;
+}
+[data-theme="dark"] .task-card-item {
+  background: #1e3a8a;
+  border-left-color: #60a5fa;
+  color: #bfdbfe;
+}
+
+.task-card-item.completed {
+  background: #e2e8f0;
+  border-left-color: #94a3b8;
+  color: #64748b;
+  text-decoration: line-through;
+}
+[data-theme="dark"] .task-card-item.completed {
+  background: #334155;
+  border-left-color: #64748b;
+  color: #94a3b8;
+}
+
+/* Panel Lateral */
 .desktop-side-panel {
   display: flex;
   flex-direction: column;
@@ -88,9 +186,9 @@ body {
 }
 
 .side-card {
-  background: var(--bg-surface, #ffffff);
-  border: 1px solid var(--border-color, #e2e8f0);
-  border-radius: var(--radius-lg, 12px);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
   padding: 16px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
@@ -102,45 +200,44 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  color: var(--text-primary, #0f172a);
+  color: var(--text-primary);
 }
 
 .quick-notes-area {
   width: 100%;
-  height: 200px;
-  border: 1px solid var(--border-color, #cbd5e1);
-  border-radius: var(--radius-md, 8px);
+  height: 160px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
   padding: 12px;
   font-family: inherit;
   font-size: 0.9rem;
   resize: vertical;
   outline: none;
-  background: var(--bg-primary, #f8fafc);
-  color: var(--text-primary, #0f172a);
+  background: var(--bg-primary);
+  color: var(--text-primary);
   transition: border-color 0.2s, background-color 0.2s;
 }
 
 .quick-notes-area:focus {
-  border-color: var(--accent-primary, #2563eb);
-  background: #ffffff;
+  border-color: var(--accent-primary);
 }
 
 kbd {
-  background-color: #e2e8f0;
-  border: 1px solid #cbd5e1;
+  background-color: var(--border-color);
+  border: 1px solid var(--border-color);
   border-radius: 4px;
   padding: 2px 6px;
   font-family: monospace;
   font-size: 0.75rem;
   font-weight: 600;
-  color: #334155;
+  color: var(--text-primary);
 }
 
 /* Modales */
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.5);
+  background: rgba(15, 23, 42, 0.6);
   backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
@@ -153,15 +250,23 @@ kbd {
 }
 
 .modal-content {
-  background: #ffffff;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
   border-radius: 16px;
   padding: 24px;
   width: 100%;
   max-width: 500px;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
 }
 
-/* Ocultar barra de navegación móvil en PC */
+.modal-content input,
+.modal-content select {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
 .mobile-nav {
   display: none !important;
 }

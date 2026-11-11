@@ -15,18 +15,19 @@
     <!-- Encabezado Principal -->
     <header class="app-header">
       <div style="display: flex; align-items: center; gap: 12px;">
-        <h1 style="font-size: 1.25rem; font-weight: 800; color: var(--accent-primary, #2563eb);">Myself</h1>
-        <span style="font-size: 0.8rem; background: #e0e7ff; color: #3730a3; padding: 2px 8px; border-radius: 12px; font-weight: 600;">PC Edition</span>
+        <h1 style="font-size: 1.25rem; font-weight: 800; color: var(--accent-primary);">Myself</h1>
+        <span style="font-size: 0.8rem; background: var(--bg-today); color: var(--text-today); padding: 2px 8px; border-radius: 12px; font-weight: 600;">PC Edition</span>
       </div>
 
-      <div style="display: flex; align-items: center; gap: 12px;">
-        <button id="btn-today" class="btn-today" style="padding: 8px 16px; border-radius: 8px; border: 1px solid #cbd5e1; background: #fff; cursor: pointer; font-weight: 600;">Hoy (T)</button>
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <button id="btn-theme-toggle" style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-surface); color: var(--text-primary); cursor: pointer; font-size: 1rem;" title="Cambiar Modo Noche/Día">🌙</button>
+        <button id="btn-today" class="btn-today" style="padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-surface); color: var(--text-primary); cursor: pointer; font-weight: 600;">Hoy (T)</button>
         <div style="display: flex; gap: 4px;">
-          <button id="btn-prev-week" class="btn-prev" style="padding: 8px 12px; border-radius: 8px; border: 1px solid #cbd5e1; background: #fff; cursor: pointer;">←</button>
-          <button id="btn-next-week" class="btn-next" style="padding: 8px 12px; border-radius: 8px; border: 1px solid #cbd5e1; background: #fff; cursor: pointer;">→</button>
+          <button id="btn-prev-week" class="btn-prev" style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-surface); color: var(--text-primary); cursor: pointer;">←</button>
+          <button id="btn-next-week" class="btn-next" style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-surface); color: var(--text-primary); cursor: pointer;">→</button>
         </div>
-        <button id="btn-add-task" class="btn-add" style="padding: 8px 16px; border-radius: 8px; background: #2563eb; color: #fff; border: none; cursor: pointer; font-weight: 600;">+ Nueva Tarea (N)</button>
-        <button id="btn-open-settings" style="padding: 8px 12px; border-radius: 8px; border: 1px solid #cbd5e1; background: #fff; cursor: pointer;">⚙️</button>
+        <button id="btn-add-task" class="btn-add" style="padding: 8px 16px; border-radius: 8px; background: var(--accent-primary); color: #fff; border: none; cursor: pointer; font-weight: 600;">+ Nueva Tarea (N)</button>
+        <button id="btn-open-settings" style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-surface); color: var(--text-primary); cursor: pointer;">⚙️</button>
       </div>
     </header>
 
@@ -45,21 +46,18 @@
       <!-- COLUMNA DERECHA: Panel Lateral Permanente -->
       <aside class="desktop-side-panel">
         
-        <!-- Guía de Atajos de Teclado -->
-        <div class="side-card" style="background: #eff6ff; border-color: #bfdbfe;">
-          <div class="side-card-title" style="color: #1e40af; margin-bottom: 8px;">
-            ⌨️ Atajos de Teclado
+        <!-- 1. Tareas Habituales / Rutinas -->
+        <div class="side-card">
+          <div class="side-card-title">
+            🔄 Tareas Habituales
+            <button id="btn-open-habitual-modal" style="font-size: 0.75rem; padding: 3px 8px; border-radius: 6px; background: var(--accent-primary); color: #fff; border: none; cursor: pointer; font-weight: 600;">+ Crear</button>
           </div>
-          <div style="font-size: 0.8rem; color: #1e3a8a; display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-            <span><kbd>N</kbd> Nueva Tarea</span>
-            <span><kbd>T</kbd> Ir a Hoy</span>
-            <span><kbd>←</kbd> Sem. Anterior</span>
-            <span><kbd>→</kbd> Sem. Siguiente</span>
-            <span><kbd>Esc</kbd> Cerrar Modal</span>
+          <div id="side-habitual-list" style="display: flex; flex-direction: column; gap: 8px; font-size: 0.85rem;">
+            <!-- Se inserta dinámicamente -->
           </div>
         </div>
 
-        <!-- Bloc de Notas Rápido -->
+        <!-- 2. Bloc de Notas Rápido -->
         <div class="side-card">
           <div class="side-card-title">
             📝 Bloc de Notas Rápido
@@ -68,13 +66,17 @@
           <textarea id="desktop-quick-notes" class="quick-notes-area" placeholder="Escribe notas, enlaces o pendientes rápidos aquí..."></textarea>
         </div>
 
-        <!-- Tareas Pendientes -->
-        <div class="side-card">
-          <div class="side-card-title">
-            📌 Pendientes Rápidos
+        <!-- 3. Atajos de Teclado -->
+        <div class="side-card" style="background: var(--bg-primary);">
+          <div class="side-card-title" style="margin-bottom: 8px;">
+            ⌨️ Atajos de Teclado
           </div>
-          <div id="side-pending-list" style="display: flex; flex-direction: column; gap: 8px; font-size: 0.85rem; color: #64748b;">
-            <p>No hay tareas pendientes.</p>
+          <div style="font-size: 0.8rem; display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+            <span><kbd>N</kbd> Nueva Tarea</span>
+            <span><kbd>T</kbd> Ir a Hoy</span>
+            <span><kbd>←</kbd> Sem. Anterior</span>
+            <span><kbd>→</kbd> Sem. Siguiente</span>
+            <span><kbd>Esc</kbd> Cerrar Modal</span>
           </div>
         </div>
 
@@ -87,30 +89,54 @@
     <div class="modal-content">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
         <h2 id="modal-task-header-title" style="font-size:1.2rem; font-weight:700;">Nueva Tarea</h2>
-        <button id="btn-close-task-modal" style="background:none; border:none; font-size:1.2rem; cursor:pointer;">✕</button>
+        <button id="btn-close-task-modal" style="background:none; border:none; font-size:1.2rem; cursor:pointer; color:var(--text-primary);">✕</button>
       </div>
       <form id="form-task" style="display:flex; flex-direction:column; gap:14px;">
         <input type="hidden" id="task-id">
         <div>
-          <label style="font-size:0.85rem; font-weight:600; color:#334155; display:block; margin-bottom:4px;">Título de la Tarea</label>
-          <input type="text" id="task-title-input" required style="width:100%; padding:10px 12px; border:1px solid #cbd5e1; border-radius:8px; font-family:inherit;" placeholder="Ej. Examen de Redes">
+          <label style="font-size:0.85rem; font-weight:600; display:block; margin-bottom:4px;">Título de la Tarea</label>
+          <input type="text" id="task-title-input" required style="width:100%; padding:10px 12px; border-radius:8px; font-family:inherit;" placeholder="Ej. Examen de Redes">
         </div>
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
           <div>
-            <label style="font-size:0.85rem; font-weight:600; color:#334155; display:block; margin-bottom:4px;">Fecha</label>
-            <input type="date" id="task-date-input" required style="width:100%; padding:8px 12px; border:1px solid #cbd5e1; border-radius:8px; font-family:inherit;">
+            <label style="font-size:0.85rem; font-weight:600; display:block; margin-bottom:4px;">Fecha</label>
+            <input type="date" id="task-date-input" required style="width:100%; padding:8px 12px; border-radius:8px; font-family:inherit;">
           </div>
           <div>
-            <label style="font-size:0.85rem; font-weight:600; color:#334155; display:block; margin-bottom:4px;">Hora</label>
-            <input type="time" id="task-time-input" required style="width:100%; padding:8px 12px; border:1px solid #cbd5e1; border-radius:8px; font-family:inherit;">
+            <label style="font-size:0.85rem; font-weight:600; display:block; margin-bottom:4px;">Hora</label>
+            <input type="time" id="task-time-input" required style="width:100%; padding:8px 12px; border-radius:8px; font-family:inherit;">
           </div>
         </div>
         <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
           <button type="button" id="btn-delete-task" style="padding:8px 16px; border-radius:8px; background:#ef4444; color:#fff; border:none; cursor:pointer; font-weight:600; display:none;">Eliminar</button>
           <div style="display:flex; gap:8px; margin-left:auto;">
-            <button type="button" id="btn-cancel-task" style="padding:8px 16px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; cursor:pointer;">Cancelar</button>
-            <button type="submit" style="padding:8px 16px; border-radius:8px; background:#2563eb; color:#fff; border:none; cursor:pointer; font-weight:600;">Guardar</button>
+            <button type="button" id="btn-cancel-task" style="padding:8px 16px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-surface); color:var(--text-primary); cursor:pointer;">Cancelar</button>
+            <button type="submit" style="padding:8px 16px; border-radius:8px; background:var(--accent-primary); color:#fff; border:none; cursor:pointer; font-weight:600;">Guardar</button>
           </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: GESTIONAR TAREAS HABITUALES -->
+  <div id="modal-habitual" class="modal-backdrop hidden">
+    <div class="modal-content">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+        <h2 style="font-size:1.2rem; font-weight:700;">Nueva Tarea Habitual</h2>
+        <button id="btn-close-habitual-modal" style="background:none; border:none; font-size:1.2rem; cursor:pointer; color:var(--text-primary);">✕</button>
+      </div>
+      <form id="form-habitual" style="display:flex; flex-direction:column; gap:14px;">
+        <div>
+          <label style="font-size:0.85rem; font-weight:600; display:block; margin-bottom:4px;">Nombre de la Rutina</label>
+          <input type="text" id="habitual-title-input" required style="width:100%; padding:10px 12px; border-radius:8px; font-family:inherit;" placeholder="Ej. Gimnasio, Repasar clase...">
+        </div>
+        <div>
+          <label style="font-size:0.85rem; font-weight:600; display:block; margin-bottom:4px;">Hora Habitual</label>
+          <input type="time" id="habitual-time-input" required value="10:00" style="width:100%; padding:8px 12px; border-radius:8px; font-family:inherit;">
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:10px;">
+          <button type="button" id="btn-cancel-habitual" style="padding:8px 16px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-surface); color:var(--text-primary); cursor:pointer;">Cancelar</button>
+          <button type="submit" style="padding:8px 16px; border-radius:8px; background:var(--accent-primary); color:#fff; border:none; cursor:pointer; font-weight:600;">Guardar Rutina</button>
         </div>
       </form>
     </div>
@@ -121,20 +147,19 @@
     <div class="modal-content">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
         <h2 style="font-size:1.2rem; font-weight:700;">Ajustes de Myself</h2>
-        <button id="btn-close-settings" style="background:none; border:none; font-size:1.2rem; cursor:pointer;">✕</button>
+        <button id="btn-close-settings" style="background:none; border:none; font-size:1.2rem; cursor:pointer; color:var(--text-primary);">✕</button>
       </div>
       <div style="display:flex; flex-direction:column; gap:12px;">
-        <button id="btn-export-json" style="padding:10px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; cursor:pointer;">💾 Exportar Copia de Seguridad (JSON)</button>
-        <label style="padding:10px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; cursor:pointer; text-align:center;">
+        <button id="btn-export-json" style="padding:10px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-surface); color:var(--text-primary); cursor:pointer;">💾 Exportar Copia de Seguridad (JSON)</button>
+        <label style="padding:10px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-surface); color:var(--text-primary); cursor:pointer; text-align:center;">
           📂 Importar Copia de Seguridad (JSON)
           <input type="file" id="input-import-json" accept=".json" style="display:none;">
         </label>
-        <button id="btn-enable-notifications" style="padding:10px; border-radius:8px; background:#2563eb; color:#fff; border:none; cursor:pointer;">🔔 Activar Notificaciones Locales</button>
+        <button id="btn-enable-notifications" style="padding:10px; border-radius:8px; background:var(--accent-primary); color:#fff; border:none; cursor:pointer;">🔔 Activar Notificaciones Locales</button>
       </div>
     </div>
   </div>
 
-  <!-- Iconos Lucide y Lógica Principal -->
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="js/app.js"></script>
 </body>

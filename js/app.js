@@ -1,5 +1,5 @@
 // =======================================================
-// MYSELF — MOTOR PRINCIPAL DE ESCRITORIO CON REJILLA SEMANAL
+// MYSELF — MOTOR PRINCIPAL CON MODO NOCHE Y RUTINAS HABITUALES
 // =======================================================
 
 let fechaActual = new Date();
@@ -13,16 +13,21 @@ document.addEventListener('DOMContentLoaded', () => {
       .catch(err => console.error('Error SW:', err));
   }
 
-  // Render inicial
+  // 1. Inicializar Tema Oscuro / Claro
+  inicializarTema();
+
+  // 2. Renderizar Calendario y Rutinas Habituales
   renderizarCalendario();
+  renderizarHabituales();
 
   // --------------------------------------------------
-  // A. NAVEGACIÓN Y BOTONES
+  // A. NAVEGACIÓN Y BOTONES CABECERA
   // --------------------------------------------------
   const btnPrev = document.getElementById('btn-prev-week');
   const btnNext = document.getElementById('btn-next-week');
   const btnToday = document.getElementById('btn-today');
   const btnAdd = document.getElementById('btn-add-task');
+  const btnTheme = document.getElementById('btn-theme-toggle');
 
   if (btnPrev) {
     btnPrev.addEventListener('click', () => {
@@ -45,8 +50,14 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  if (btnAdd) {
-    btnAdd.addEventListener('click', () => abrirModalTarea());
+  if (btnAdd) btnAdd.addEventListener('click', () => abrirModalTarea());
+
+  if (btnTheme) {
+    btnTheme.addEventListener('click', () => {
+      const actual = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+      const nuevo = actual === 'dark' ? 'light' : 'dark';
+      aplicarTema(nuevo);
+    });
   }
 
   // --------------------------------------------------
@@ -112,7 +123,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // --------------------------------------------------
-  // D. MODAL DE AJUSTES E IMPORTACIÓN/EXPORTACIÓN JSON
+  // D. MODAL DE AJUSTES E IMPORTACIÓN / EXPORTACIÓN
   // --------------------------------------------------
   const btnOpenSettings = document.getElementById('btn-open-settings');
   const btnCloseSettings = document.getElementById('btn-close-settings');
@@ -125,28 +136,28 @@ document.addEventListener('DOMContentLoaded', () => {
     btnCloseSettings.addEventListener('click', () => modalSettings.classList.add('hidden'));
   }
 
-  // Exportar JSON
   const btnExport = document.getElementById('btn-export-json');
   if (btnExport) {
     btnExport.addEventListener('click', () => {
       const backupData = {
-        version: '2.0',
+        version: '3.0',
         timestamp: new Date().toISOString(),
         myday_tasks: localStorage.getItem('myday_tasks') || '[]',
+        myday_habitual: localStorage.getItem('myday_habitual') || '[]',
         myday_quick_notes: localStorage.getItem('myday_quick_notes') || '',
+        myday_theme: localStorage.getItem('myday_theme') || 'light',
         storage: { ...localStorage }
       };
       const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
       const dl = document.createElement('a');
       dl.setAttribute("href", dataStr);
-      dl.setAttribute("download", `myself_backup_${new Date().toISOString().slice(0,10)}.json`);
+      dl.setAttribute("download", `myself_pc_full_backup_${new Date().toISOString().slice(0,10)}.json`);
       document.body.appendChild(dl);
       dl.click();
       dl.remove();
     });
   }
 
-  // Importar JSON (Reparado para aceptar todos los formatos)
   const inputImport = document.getElementById('input-import-json');
   if (inputImport) {
     inputImport.addEventListener('change', (e) => {
@@ -160,33 +171,25 @@ document.addEventListener('DOMContentLoaded', () => {
           if (imported.storage) {
             Object.keys(imported.storage).forEach(k => localStorage.setItem(k, imported.storage[k]));
           } else {
-            if (imported.myday_tasks) {
-              const tasksVal = typeof imported.myday_tasks === 'string' ? imported.myday_tasks : JSON.stringify(imported.myday_tasks);
-              localStorage.setItem('myday_tasks', tasksVal);
-            }
-            if (imported.myday_quick_notes) {
-              localStorage.setItem('myday_quick_notes', imported.myday_quick_notes);
-            }
-            // Si viene un objeto simple clave-valor
             Object.keys(imported).forEach(k => {
-              if (k !== 'myday_tasks' && k !== 'myday_quick_notes' && k !== 'timestamp' && k !== 'version') {
-                const val = typeof imported[k] === 'string' ? imported[k] : JSON.stringify(imported[k]);
-                localStorage.setItem(k, val);
+              if (typeof imported[k] === 'object') {
+                localStorage.setItem(k, JSON.stringify(imported[k]));
+              } else {
+                localStorage.setItem(k, imported[k]);
               }
             });
           }
 
-          alert('¡Datos importados con éxito!');
+          alert('¡Sincronización de copia completada con éxito!');
           window.location.reload();
         } catch (err) {
-          alert('Error al procesar el archivo JSON: ' + err.message);
+          alert('Error al leer el archivo JSON: ' + err.message);
         }
       };
       reader.readAsText(file);
     });
   }
 
-  // Notificaciones
   const btnNotify = document.getElementById('btn-enable-notifications');
   if (btnNotify) {
     btnNotify.addEventListener('click', async () => {
@@ -196,13 +199,30 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Eventos del Modal de Tarea
   configurarModalTareaForm();
+  configurarModalHabitualForm();
   iniciarComprobadorNotificaciones();
 });
 
 // =======================================================
-// RENDERIZADOR DE LA REJILLA SEMANAL (CON DÍAS PASADOS EN VERDE)
+// MODO NOCHE (DARK MODE)
+// =======================================================
+function inicializarTema() {
+  const temaGuardado = localStorage.getItem('myday_theme') || 'light';
+  aplicarTema(temaGuardado);
+}
+
+function aplicarTema(tema) {
+  document.documentElement.setAttribute('data-theme', tema);
+  localStorage.setItem('myday_theme', tema);
+  const btnTheme = document.getElementById('btn-theme-toggle');
+  if (btnTheme) {
+    btnTheme.innerText = tema === 'dark' ? '☀️' : '🌙';
+  }
+}
+
+// =======================================================
+// REJILLA SEMANAL (CON CLASES Y DÍAS PASADOS EN VERDE)
 // =======================================================
 function obtenerLunes(d) {
   const date = new Date(d);
@@ -229,39 +249,33 @@ function renderizarCalendario() {
 
   const hoyStr = new Date().toISOString().slice(0, 10);
 
-  // 1. Header Hora
+  // Fila Encabezado Hora
   const headerHora = document.createElement('div');
-  headerHora.style.cssText = 'padding: 12px; font-size: 0.75rem; font-weight: 700; color: #64748b; border-bottom: 2px solid #e2e8f0; text-align: center; background: #f8fafc;';
+  headerHora.className = 'grid-time-cell';
+  headerHora.style.fontWeight = '700';
   headerHora.innerText = 'Hora';
   grid.appendChild(headerHora);
 
-  // 2. Header Días
+  // Encabezados Días
   fechasSemana.forEach((fecha, idx) => {
     const fechaStr = fecha.toISOString().slice(0, 10);
     const esHoy = fechaStr === hoyStr;
     const esPasado = fechaStr < hoyStr;
 
     const headerDia = document.createElement('div');
-    
-    // Estilos por fecha (Verde para pasados, Azul para hoy)
-    let bgHeader = '#f8fafc';
-    let colorSub = '#64748b';
-    let colorNum = '#0f172a';
-    let borderBot = '2px solid #e2e8f0';
+    headerDia.className = `grid-header-cell ${esHoy ? 'is-today' : ''} ${esPasado ? 'is-past' : ''}`;
+
+    let colorSub = 'var(--text-secondary)';
+    let colorNum = 'var(--text-primary)';
 
     if (esHoy) {
-      bgHeader = '#eff6ff';
-      colorSub = '#2563eb';
-      colorNum = '#1d4ed8';
-      borderBot = '2px solid #3b82f6';
+      colorSub = 'var(--text-today)';
+      colorNum = 'var(--text-today)';
     } else if (esPasado) {
-      bgHeader = '#f0fdf4'; // Verde suave
-      colorSub = '#166534';
-      colorNum = '#15803d';
-      borderBot = '2px solid #bbf7d0';
+      colorSub = 'var(--text-past-day)';
+      colorNum = 'var(--text-past-day)';
     }
 
-    headerDia.style.cssText = `padding: 10px; text-align: center; border-bottom: ${borderBot}; background: ${bgHeader}; border-left: 1px solid #f1f5f9;`;
     headerDia.innerHTML = `
       <div style="font-size: 0.75rem; font-weight: 700; color: ${colorSub}; text-transform: uppercase;">${diasSemana[idx]}</div>
       <div style="font-size: 1rem; font-weight: 800; color: ${colorNum};">${fecha.getDate()}</div>
@@ -269,15 +283,14 @@ function renderizarCalendario() {
     grid.appendChild(headerDia);
   });
 
-  // 3. Cargar Tareas
   const tareas = JSON.parse(localStorage.getItem('myday_tasks') || '[]');
 
-  // 4. Filas por Hora
+  // Filas por Hora
   for (let h = 7; h <= 23; h++) {
     const horaStr = `${String(h).padStart(2, '0')}:00`;
 
     const cellHora = document.createElement('div');
-    cellHora.style.cssText = 'padding: 8px; font-size: 0.75rem; font-weight: 600; color: #94a3b8; text-align: center; border-bottom: 1px solid #f1f5f9; background: #fafafa;';
+    cellHora.className = 'grid-time-cell';
     cellHora.innerText = horaStr;
     grid.appendChild(cellHora);
 
@@ -286,16 +299,14 @@ function renderizarCalendario() {
       const esPasado = fechaISO < hoyStr;
 
       const cell = document.createElement('div');
-      cell.style.cssText = `min-height: 48px; border-bottom: 1px solid #f1f5f9; border-left: 1px solid #f1f5f9; padding: 4px; position: relative; transition: background 0.2s; background: ${esPasado ? '#fafdfa' : '#ffffff'};`;
+      cell.className = `grid-slot-cell ${esPasado ? 'is-past' : ''}`;
 
       const tareasSlot = tareas.filter(t => t.date === fechaISO && t.time && t.time.startsWith(String(h).padStart(2, '0')));
 
       tareasSlot.forEach(t => {
         const item = document.createElement('div');
-        item.style.cssText = `background: ${t.completed ? '#e2e8f0' : '#dbeafe'}; border-left: 3px solid ${t.completed ? '#94a3b8' : '#2563eb'}; padding: 4px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; color: ${t.completed ? '#64748b' : '#1e40af'}; margin-bottom: 4px; cursor: pointer; text-decoration: ${t.completed ? 'line-through' : 'none'};`;
+        item.className = `task-card-item ${t.completed ? 'completed' : ''}`;
         item.innerText = `${t.time} ${t.title}`;
-        
-        // Clic en la tarea: Abrir modal para editar
         item.onclick = (e) => {
           e.stopPropagation();
           abrirModalTarea(t);
@@ -303,17 +314,100 @@ function renderizarCalendario() {
         cell.appendChild(item);
       });
 
-      // Clic en la celda vacía: Crear nueva tarea en esa fecha y hora
       cell.onclick = () => abrirModalTarea({ date: fechaISO, time: horaStr });
       grid.appendChild(cell);
     });
   }
-
-  actualizarListaPendientes(tareas);
 }
 
 // =======================================================
-// INTERFAZ DE MODAL DE TAREAS (NADA DE PROMPTS)
+// TAREAS HABITUALES / RUTINAS
+// =======================================================
+function renderizarHabituales() {
+  const listContainer = document.getElementById('side-habitual-list');
+  if (!listContainer) return;
+
+  const habituales = JSON.parse(localStorage.getItem('myday_habitual') || '[]');
+
+  if (habituales.length === 0) {
+    listContainer.innerHTML = '<p style="color:var(--text-secondary); font-size:0.8rem;">No tienes rutinas habituales guardadas.</p>';
+    return;
+  }
+
+  listContainer.innerHTML = habituales.map(h => `
+    <div style="background:var(--bg-primary); border:1px solid var(--border-color); padding:8px 10px; border-radius:8px; display:flex; justify-content:space-between; align-items:center;">
+      <div>
+        <div style="font-weight:700; color:var(--text-primary);">${h.title}</div>
+        <div style="font-size:0.75rem; color:var(--text-secondary);">${h.time || '10:00'}</div>
+      </div>
+      <div style="display:flex; gap:6px;">
+        <button onclick="añadirHabitualAHoy('${h.id}')" style="padding:4px 8px; background:var(--accent-primary); color:#fff; border:none; border-radius:6px; font-weight:600; cursor:pointer; font-size:0.75rem;" title="Añadir a Hoy">+ Hoy</button>
+        <button onclick="eliminarHabitual('${h.id}')" style="padding:4px 6px; background:transparent; color:#ef4444; border:none; cursor:pointer; font-size:0.85rem;" title="Eliminar Rutina">🗑️</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function añadirHabitualAHoy(id) {
+  const habituales = JSON.parse(localStorage.getItem('myday_habitual') || '[]');
+  const rut = habituales.find(x => x.id === id);
+  if (!rut) return;
+
+  const hoyStr = new Date().toISOString().slice(0, 10);
+  const tareas = JSON.parse(localStorage.getItem('myday_tasks') || '[]');
+
+  tareas.push({
+    id: Date.now().toString(),
+    title: rut.title,
+    date: hoyStr,
+    time: rut.time || '10:00',
+    completed: false
+  });
+
+  localStorage.setItem('myday_tasks', JSON.stringify(tareas));
+  renderizarCalendario();
+}
+
+function eliminarHabitual(id) {
+  let habituales = JSON.parse(localStorage.getItem('myday_habitual') || '[]');
+  habituales = habituales.filter(h => h.id !== id);
+  localStorage.setItem('myday_habitual', JSON.stringify(habituales));
+  renderizarHabituales();
+}
+
+function configurarModalHabitualForm() {
+  const modalBtn = document.getElementById('btn-open-habitual-modal');
+  const modal = document.getElementById('modal-habitual');
+  const btnClose = document.getElementById('btn-close-habitual-modal');
+  const btnCancel = document.getElementById('btn-cancel-habitual');
+  const form = document.getElementById('form-habitual');
+
+  const cerrar = () => modal.classList.add('hidden');
+
+  if (modalBtn) modalBtn.onclick = () => modal.classList.remove('hidden');
+  if (btnClose) btnClose.onclick = cerrar;
+  if (btnCancel) btnCancel.onclick = cerrar;
+
+  if (form) {
+    form.onsubmit = (e) => {
+      e.preventDefault();
+      const title = document.getElementById('habitual-title-input').value.trim();
+      const time = document.getElementById('habitual-time-input').value;
+      if (!title) return;
+
+      const habituales = JSON.parse(localStorage.getItem('myday_habitual') || '[]');
+      habituales.push({ id: Date.now().toString(), title, time });
+
+      localStorage.setItem('myday_habitual', JSON.stringify(habituales));
+      document.getElementById('habitual-title-input').value = '';
+      cerrar();
+      renderizarHabituales();
+    };
+  }
+}
+
+// =======================================================
+// MODAL TAREA NORMAL (CREAR Y EDITAR)
 // =======================================================
 function abrirModalTarea(tareaExistente = {}) {
   const modal = document.getElementById('modal-task');
@@ -329,7 +423,6 @@ function abrirModalTarea(tareaExistente = {}) {
   const hoyStr = new Date().toISOString().slice(0, 10);
 
   if (tareaExistente.id) {
-    // Editar Tarea
     modalTitle.innerText = "Editar Tarea";
     inputId.value = tareaExistente.id;
     inputTitle.value = tareaExistente.title || '';
@@ -337,7 +430,6 @@ function abrirModalTarea(tareaExistente = {}) {
     inputTime.value = tareaExistente.time || '09:00';
     btnDelete.style.display = 'block';
   } else {
-    // Crear Tarea
     modalTitle.innerText = "Nueva Tarea";
     inputId.value = '';
     inputTitle.value = '';
@@ -375,7 +467,6 @@ function configurarModalTareaForm() {
       let tareas = JSON.parse(localStorage.getItem('myday_tasks') || '[]');
 
       if (id) {
-        // Actualizar existente
         const idx = tareas.findIndex(t => t.id === id);
         if (idx !== -1) {
           tareas[idx].title = title;
@@ -383,7 +474,6 @@ function configurarModalTareaForm() {
           tareas[idx].time = time;
         }
       } else {
-        // Crear nueva
         tareas.push({
           id: Date.now().toString(),
           title,
@@ -412,30 +502,6 @@ function configurarModalTareaForm() {
       renderizarCalendario();
     };
   }
-}
-
-function actualizarListaPendientes(tareas) {
-  const sideList = document.getElementById('side-pending-list');
-  if (!sideList) return;
-
-  const pendientes = tareas.filter(t => !t.completed);
-  if (pendientes.length === 0) {
-    sideList.innerHTML = '<p style="color:#94a3b8; font-size:0.85rem;">No hay tareas pendientes.</p>';
-    return;
-  }
-
-  sideList.innerHTML = pendientes.slice(0, 5).map(t => `
-    <div style="background:#f8fafc; border:1px solid #e2e8f0; padding:8px 10px; border-radius:6px; display:flex; justify-content:space-between; align-items:center; cursor:pointer;" onclick="abrirModalTareaDirecto('${t.id}')">
-      <span style="font-weight:600; color:#334155;">${t.title}</span>
-      <span style="font-size:0.75rem; color:#64748b; background:#e2e8f0; padding:2px 6px; border-radius:4px;">${t.time || 'Todo el día'}</span>
-    </div>
-  `).join('');
-}
-
-function abrirModalTareaDirecto(id) {
-  const tareas = JSON.parse(localStorage.getItem('myday_tasks') || '[]');
-  const t = tareas.find(x => x.id === id);
-  if (t) abrirModalTarea(t);
 }
 
 function iniciarComprobadorNotificaciones() {
