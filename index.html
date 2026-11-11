@@ -42,10 +42,10 @@
         </div>
       </main>
 
-      <!-- COLUMNA DERECHA: Panel Lateral Permanente (Solo PC) -->
+      <!-- COLUMNA DERECHA: Panel Lateral Permanente -->
       <aside class="desktop-side-panel">
         
-        <!-- 1. Guía de Atajos de Teclado -->
+        <!-- Guía de Atajos de Teclado -->
         <div class="side-card" style="background: #eff6ff; border-color: #bfdbfe;">
           <div class="side-card-title" style="color: #1e40af; margin-bottom: 8px;">
             ⌨️ Atajos de Teclado
@@ -59,7 +59,7 @@
           </div>
         </div>
 
-        <!-- 2. Bloc de Notas Rápido con Autoguardado -->
+        <!-- Bloc de Notas Rápido -->
         <div class="side-card">
           <div class="side-card-title">
             📝 Bloc de Notas Rápido
@@ -68,13 +68,13 @@
           <textarea id="desktop-quick-notes" class="quick-notes-area" placeholder="Escribe notas, enlaces o pendientes rápidos aquí..."></textarea>
         </div>
 
-        <!-- 3. Tareas Pendientes del Día -->
+        <!-- Tareas Pendientes -->
         <div class="side-card">
           <div class="side-card-title">
             📌 Pendientes Rápidos
           </div>
           <div id="side-pending-list" style="display: flex; flex-direction: column; gap: 8px; font-size: 0.85rem; color: #64748b;">
-            <p>No hay tareas pendientes en esta vista.</p>
+            <p>No hay tareas pendientes.</p>
           </div>
         </div>
 
@@ -82,7 +82,41 @@
     </div>
   </div>
 
-  <!-- Modal de Ajustes -->
+  <!-- MODAL: CREAR / EDITAR TAREA -->
+  <div id="modal-task" class="modal-backdrop hidden">
+    <div class="modal-content">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+        <h2 id="modal-task-header-title" style="font-size:1.2rem; font-weight:700;">Nueva Tarea</h2>
+        <button id="btn-close-task-modal" style="background:none; border:none; font-size:1.2rem; cursor:pointer;">✕</button>
+      </div>
+      <form id="form-task" style="display:flex; flex-direction:column; gap:14px;">
+        <input type="hidden" id="task-id">
+        <div>
+          <label style="font-size:0.85rem; font-weight:600; color:#334155; display:block; margin-bottom:4px;">Título de la Tarea</label>
+          <input type="text" id="task-title-input" required style="width:100%; padding:10px 12px; border:1px solid #cbd5e1; border-radius:8px; font-family:inherit;" placeholder="Ej. Examen de Redes">
+        </div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+          <div>
+            <label style="font-size:0.85rem; font-weight:600; color:#334155; display:block; margin-bottom:4px;">Fecha</label>
+            <input type="date" id="task-date-input" required style="width:100%; padding:8px 12px; border:1px solid #cbd5e1; border-radius:8px; font-family:inherit;">
+          </div>
+          <div>
+            <label style="font-size:0.85rem; font-weight:600; color:#334155; display:block; margin-bottom:4px;">Hora</label>
+            <input type="time" id="task-time-input" required style="width:100%; padding:8px 12px; border:1px solid #cbd5e1; border-radius:8px; font-family:inherit;">
+          </div>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
+          <button type="button" id="btn-delete-task" style="padding:8px 16px; border-radius:8px; background:#ef4444; color:#fff; border:none; cursor:pointer; font-weight:600; display:none;">Eliminar</button>
+          <div style="display:flex; gap:8px; margin-left:auto;">
+            <button type="button" id="btn-cancel-task" style="padding:8px 16px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; cursor:pointer;">Cancelar</button>
+            <button type="submit" style="padding:8px 16px; border-radius:8px; background:#2563eb; color:#fff; border:none; cursor:pointer; font-weight:600;">Guardar</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: AJUSTES -->
   <div id="modal-settings" class="modal-backdrop hidden">
     <div class="modal-content">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
