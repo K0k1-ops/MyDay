@@ -1,13 +1,13 @@
 // =======================================================
-// MYSELF — MOTOR PRINCIPAL (SINCRONIZACIÓN NUBE + LOCAL)
+// MYSELF — MOTOR PRINCIPAL (SINCRONIZACIÓN API GITHUB + LOCAL)
 // =======================================================
 
 let fechaActual = new Date();
 let filtroCategoriaActual = 'todas';
-let ultimoTsGithubAplicado = 0;
+let ultimoEtagGithub = null;
 const HORA_INICIO_GRID = 7;
 const HORA_FIN_GRID = 23;
-const GITHUB_RAW_BACKUP_URL = 'https://raw.githubusercontent.com/K0k1-ops/MyDay/main/myself_backup.json';
+const GITHUB_API_BACKUP_URL = 'https://api.github.com/repos/K0k1-ops/MyDay/contents/myself_backup.json';
 
 function getFechaHoyISO() {
   const d = new Date();
@@ -17,8 +17,24 @@ function getFechaHoyISO() {
   return `${year}-${month}-${day}`;
 }
 
+function mostrarAvisoSync(texto) {
+  let toast = document.getElementById('sync-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'sync-toast';
+    toast.style.cssText = 'position:fixed; bottom:18px; right:18px; background:var(--accent-primary, #2563eb); color:#fff; padding:10px 16px; border-radius:10px; font-size:0.85rem; font-weight:600; box-shadow:0 8px 20px rgba(0,0,0,0.25); z-index:9999; transition:opacity 0.3s ease; pointer-events:none;';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = texto;
+  toast.style.opacity = '1';
+  clearTimeout(toast._hideTimer);
+  toast._hideTimer = setTimeout(() => {
+    toast.style.opacity = '0';
+  }, 3000);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
-  cargarBackupServidor();
+  cargarBackupServidor(false);
 
   if (window.lucide) lucide.createIcons();
 
@@ -39,12 +55,11 @@ document.addEventListener('DOMContentLoaded', () => {
     renderizarIndicadorHoraActual();
   }, 30000);
 
-  // Sincronización automática periódica con Jarvis / GitHub (cada 12s)
+  // Consulta cada 6s a la API de GitHub (usa ETag: 304 Not Modified no consume límite)
   setInterval(() => {
     cargarBackupServidor(true);
-  }, 12000);
+  }, 6000);
 
-  // Sincronizar al volver a la pestaña o ventana del navegador
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) cargarBackupServidor(true);
   });
@@ -239,73 +254,94 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // =======================================================
-// CARGAR Y SINCRONIZAR DATOS (LOCAL + GITHUB NUBE)
+// CARGAR Y SINCRONIZAR DATOS (API GITHUB SIN CACHÉ + LOCAL)
 // =======================================================
+async function fetchGithubDirecto() {
+  try {
+    const headers = { 'Accept': 'application/vnd.github.raw+json' };
+    if (ultimoEtagGithub) {
+      headers['If-None-Match'] = ultimoEtagGithub;
+    }
+    const res = await fetch(GITHUB_API_BACKUP_URL, {
+      headers,
+      cache: 'no-store'
+    });
+    if (res.status === 304) {
+      return { sinCambios: true, data: null };
+    }
+    if (!res.ok) {
+      return { sinCambios: false, data: null };
+    }
+    const etag = res.headers.get('ETag');
+    if (etag) ultimoEtagGithub = etag;
+    const data = await res.json();
+    return { sinCambios: false, data };
+  } catch {
+    return { sinCambios: false, data: null };
+  }
+}
+
 async function cargarBackupServidor(soloSiHayCambios = false) {
   if (document.querySelector('.dragging')) return;
 
-  const cacheBust = `?t=${Date.now()}`;
+  const ghRes = await fetchGithubDirecto();
+  if (soloSiHayCambios && ghRes.sinCambios) return;
 
-  const fetchJsonSeguro = async (url) => {
+  let localData = null;
+  if (!soloSiHayCambios) {
     try {
-      const res = await fetch(url, { cache: 'no-store' });
-      if (!res.ok) return null;
-      return await res.json();
-    } catch {
-      return null;
-    }
-  };
+      const resLocal = await fetch(`/myself_backup.json?t=${Date.now()}`, { cache: 'no-store' });
+      if (resLocal.ok) localData = await resLocal.json();
+    } catch {}
+  }
 
-  const [localData, githubData] = await Promise.all([
-    fetchJsonSeguro(`/myself_backup.json${cacheBust}`),
-    fetchJsonSeguro(`${GITHUB_RAW_BACKUP_URL}${cacheBust}`)
-  ]);
+  const githubData = ghRes.data;
+  if (!localData && !githubData) return;
 
-  if (!localData && !githubData) {
-    if (!soloSiHayCambios) console.log('Usando datos de localStorage');
+  const ultimoTsAplicado = localStorage.getItem('myday_last_github_ts') || '';
+  const tsGithubStr = githubData && githubData.timestamp ? String(githubData.timestamp) : '';
+  const tsGithubMs = tsGithubStr ? new Date(tsGithubStr).getTime() : 0;
+  const ultimoMs = ultimoTsAplicado ? new Date(ultimoTsAplicado).getTime() : 0;
+
+  if (soloSiHayCambios && (!githubData || tsGithubMs <= ultimoMs)) {
     return;
   }
 
-  const tsLocal = localData && localData.timestamp ? new Date(localData.timestamp).getTime() : 0;
-  const tsGithub = githubData && githubData.timestamp ? new Date(githubData.timestamp).getTime() : 0;
-
-  if (soloSiHayCambios && (tsGithub <= tsLocal || tsGithub <= ultimoTsGithubAplicado)) {
-    return;
-  }
-
-  const vieneDeGithub = tsGithub > tsLocal && tsGithub > ultimoTsGithubAplicado;
-  const masReciente = vieneDeGithub ? githubData : (localData || githubData);
+  const usarGithub = Boolean(githubData && (tsGithubMs >= ultimoMs || !localData));
+  const origen = usarGithub ? githubData : localData;
 
   const tareasPrevias = localStorage.getItem('myday_tasks') || '[]';
   const habitualesPrevios = localStorage.getItem('myday_habitual') || '[]';
 
-  const tareasNuevas = masReciente.myday_tasks
-    ? (typeof masReciente.myday_tasks === 'string' ? masReciente.myday_tasks : JSON.stringify(masReciente.myday_tasks))
+  const tareasNuevas = origen.myday_tasks
+    ? (typeof origen.myday_tasks === 'string' ? origen.myday_tasks : JSON.stringify(origen.myday_tasks))
     : tareasPrevias;
 
-  const habitualesNuevos = masReciente.myday_habitual
-    ? (typeof masReciente.myday_habitual === 'string' ? masReciente.myday_habitual : JSON.stringify(masReciente.myday_habitual))
+  const habitualesNuevos = origen.myday_habitual
+    ? (typeof origen.myday_habitual === 'string' ? origen.myday_habitual : JSON.stringify(origen.myday_habitual))
     : habitualesPrevios;
 
   localStorage.setItem('myday_tasks', tareasNuevas);
   localStorage.setItem('myday_habitual', habitualesNuevos);
 
-  if (typeof masReciente.myday_quick_notes === 'string') {
+  if (typeof origen.myday_quick_notes === 'string') {
     const notesEl = document.getElementById('desktop-quick-notes');
     if (notesEl && document.activeElement !== notesEl) {
-      localStorage.setItem('myday_quick_notes', masReciente.myday_quick_notes);
-      notesEl.value = masReciente.myday_quick_notes;
+      localStorage.setItem('myday_quick_notes', origen.myday_quick_notes);
+      notesEl.value = origen.myday_quick_notes;
     }
   }
 
-  if (masReciente.myday_theme) {
-    localStorage.setItem('myday_theme', masReciente.myday_theme);
+  if (origen.myday_theme) {
+    localStorage.setItem('myday_theme', origen.myday_theme);
   }
 
-  if (vieneDeGithub) {
-    ultimoTsGithubAplicado = tsGithub;
-    console.log('☁️ Sincronizado desde Jarvis / GitHub');
-    autosaveAlServidor();
+  if (usarGithub && tsGithubStr) {
+    localStorage.setItem('myday_last_github_ts', tsGithubStr);
+    autosaveAlServidor(tsGithubStr);
+    if (soloSiHayCambios && (tareasNuevas !== tareasPrevias || habitualesNuevos !== habitualesPrevios)) {
+      mostrarAvisoSync('☁️ Calendario actualizado desde Jarvis');
+    }
   }
 
   if (!soloSiHayCambios || tareasNuevas !== tareasPrevias || habitualesNuevos !== habitualesPrevios) {
@@ -317,10 +353,10 @@ async function cargarBackupServidor(soloSiHayCambios = false) {
 // =======================================================
 // AUTO-GUARDADO AL SERVIDOR LOCAL (PYTHON API)
 // =======================================================
-function autosaveAlServidor() {
+function autosaveAlServidor(timestampForzado = null) {
   const backupData = {
     version: '11.0',
-    timestamp: new Date().toISOString(),
+    timestamp: timestampForzado || new Date().toISOString(),
     myday_tasks: localStorage.getItem('myday_tasks') || '[]',
     myday_habitual: localStorage.getItem('myday_habitual') || '[]',
     myday_quick_notes: localStorage.getItem('myday_quick_notes') || '',
