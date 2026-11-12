@@ -1,11 +1,12 @@
 // =======================================================
-// MYSELF — MOTOR PRINCIPAL (HORA ACTUAL, DRAG & DROP Y VERDE OSCURO)
+// MYSELF — MOTOR PRINCIPAL (SINCRONIZACIÓN NUBE + LOCAL)
 // =======================================================
 
 let fechaActual = new Date();
 let filtroCategoriaActual = 'todas';
 const HORA_INICIO_GRID = 7;
 const HORA_FIN_GRID = 23;
+const GITHUB_RAW_BACKUP_URL = 'https://raw.githubusercontent.com/K0k1-ops/MyDay/main/myself_backup.json';
 
 function getFechaHoyISO() {
   const d = new Date();
@@ -224,23 +225,64 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // =======================================================
-// CARGAR DATOS DEL SERVIDOR AL ABRIR LA WEB
+// CARGAR Y SINCRONIZAR DATOS (LOCAL + GITHUB NUBE)
 // =======================================================
-function cargarBackupServidor() {
-  fetch('/myself_backup.json')
-    .then(res => {
-      if (!res.ok) throw new Error('No hay backup en servidor');
-      return res.json();
-    })
-    .then(data => {
-      if (data.myday_tasks) localStorage.setItem('myday_tasks', typeof data.myday_tasks === 'string' ? data.myday_tasks : JSON.stringify(data.myday_tasks));
-      if (data.myday_habitual) localStorage.setItem('myday_habitual', typeof data.myday_habitual === 'string' ? data.myday_habitual : JSON.stringify(data.myday_habitual));
-      if (data.myday_quick_notes) localStorage.setItem('myday_quick_notes', data.myday_quick_notes);
-      if (data.myday_theme) localStorage.setItem('myday_theme', data.myday_theme);
-      renderizarCalendario();
-      renderizarHabitualesSidebar();
-    })
-    .catch(err => console.log('Usando datos de localStorage:', err));
+async function cargarBackupServidor() {
+  const cacheBust = `?t=${Date.now()}`;
+
+  const fetchJsonSeguro = async (url) => {
+    try {
+      const res = await fetch(url, { cache: 'no-store' });
+      if (!res.ok) return null;
+      return await res.json();
+    } catch {
+      return null;
+    }
+  };
+
+  const [localData, githubData] = await Promise.all([
+    fetchJsonSeguro(`/myself_backup.json${cacheBust}`),
+    fetchJsonSeguro(`${GITHUB_RAW_BACKUP_URL}${cacheBust}`)
+  ]);
+
+  if (!localData && !githubData) {
+    console.log('Usando datos de localStorage');
+    return;
+  }
+
+  const tsLocal = localData && localData.timestamp ? new Date(localData.timestamp).getTime() : 0;
+  const tsGithub = githubData && githubData.timestamp ? new Date(githubData.timestamp).getTime() : 0;
+
+  const masReciente = tsGithub > tsLocal ? githubData : (localData || githubData);
+
+  if (masReciente.myday_tasks) {
+    localStorage.setItem(
+      'myday_tasks',
+      typeof masReciente.myday_tasks === 'string' ? masReciente.myday_tasks : JSON.stringify(masReciente.myday_tasks)
+    );
+  }
+  if (masReciente.myday_habitual) {
+    localStorage.setItem(
+      'myday_habitual',
+      typeof masReciente.myday_habitual === 'string' ? masReciente.myday_habitual : JSON.stringify(masReciente.myday_habitual)
+    );
+  }
+  if (typeof masReciente.myday_quick_notes === 'string') {
+    localStorage.setItem('myday_quick_notes', masReciente.myday_quick_notes);
+    const notesEl = document.getElementById('desktop-quick-notes');
+    if (notesEl) notesEl.value = masReciente.myday_quick_notes;
+  }
+  if (masReciente.myday_theme) {
+    localStorage.setItem('myday_theme', masReciente.myday_theme);
+  }
+
+  if (tsGithub > tsLocal) {
+    console.log('☁️ Sincronizado desde Jarvis / GitHub');
+    autosaveAlServidor();
+  }
+
+  renderizarCalendario();
+  renderizarHabitualesSidebar();
 }
 
 // =======================================================
@@ -321,7 +363,7 @@ function renderizarIndicadorHoraActual() {
   if (!columnaHoy) return;
 
   const ahora = new Date();
-  const minActuales = me = ahora.getHours() * 60 + ahora.getMinutes();
+  const minActuales = ahora.getHours() * 60 + ahora.getMinutes();
   const minInicioGrid = HORA_INICIO_GRID * 60;
 
   if (minActuales >= minInicioGrid && minActuales <= (HORA_FIN_GRID + 1) * 60) {
