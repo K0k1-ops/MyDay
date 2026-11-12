@@ -4,6 +4,7 @@
 
 let fechaActual = new Date();
 let filtroCategoriaActual = 'todas';
+let ultimoTsGithubAplicado = 0;
 const HORA_INICIO_GRID = 7;
 const HORA_FIN_GRID = 23;
 const GITHUB_RAW_BACKUP_URL = 'https://raw.githubusercontent.com/K0k1-ops/MyDay/main/myself_backup.json';
@@ -37,6 +38,19 @@ document.addEventListener('DOMContentLoaded', () => {
   setInterval(() => {
     renderizarIndicadorHoraActual();
   }, 30000);
+
+  // Sincronización automática periódica con Jarvis / GitHub (cada 12s)
+  setInterval(() => {
+    cargarBackupServidor(true);
+  }, 12000);
+
+  // Sincronizar al volver a la pestaña o ventana del navegador
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) cargarBackupServidor(true);
+  });
+  window.addEventListener('focus', () => {
+    cargarBackupServidor(true);
+  });
 
   // --------------------------------------------------
   // A. EVENTOS DE CABECERA Y NAVEGACIÓN
@@ -227,7 +241,9 @@ document.addEventListener('DOMContentLoaded', () => {
 // =======================================================
 // CARGAR Y SINCRONIZAR DATOS (LOCAL + GITHUB NUBE)
 // =======================================================
-async function cargarBackupServidor() {
+async function cargarBackupServidor(soloSiHayCambios = false) {
+  if (document.querySelector('.dragging')) return;
+
   const cacheBust = `?t=${Date.now()}`;
 
   const fetchJsonSeguro = async (url) => {
@@ -246,43 +262,56 @@ async function cargarBackupServidor() {
   ]);
 
   if (!localData && !githubData) {
-    console.log('Usando datos de localStorage');
+    if (!soloSiHayCambios) console.log('Usando datos de localStorage');
     return;
   }
 
   const tsLocal = localData && localData.timestamp ? new Date(localData.timestamp).getTime() : 0;
   const tsGithub = githubData && githubData.timestamp ? new Date(githubData.timestamp).getTime() : 0;
 
-  const masReciente = tsGithub > tsLocal ? githubData : (localData || githubData);
+  if (soloSiHayCambios && (tsGithub <= tsLocal || tsGithub <= ultimoTsGithubAplicado)) {
+    return;
+  }
 
-  if (masReciente.myday_tasks) {
-    localStorage.setItem(
-      'myday_tasks',
-      typeof masReciente.myday_tasks === 'string' ? masReciente.myday_tasks : JSON.stringify(masReciente.myday_tasks)
-    );
-  }
-  if (masReciente.myday_habitual) {
-    localStorage.setItem(
-      'myday_habitual',
-      typeof masReciente.myday_habitual === 'string' ? masReciente.myday_habitual : JSON.stringify(masReciente.myday_habitual)
-    );
-  }
+  const vieneDeGithub = tsGithub > tsLocal && tsGithub > ultimoTsGithubAplicado;
+  const masReciente = vieneDeGithub ? githubData : (localData || githubData);
+
+  const tareasPrevias = localStorage.getItem('myday_tasks') || '[]';
+  const habitualesPrevios = localStorage.getItem('myday_habitual') || '[]';
+
+  const tareasNuevas = masReciente.myday_tasks
+    ? (typeof masReciente.myday_tasks === 'string' ? masReciente.myday_tasks : JSON.stringify(masReciente.myday_tasks))
+    : tareasPrevias;
+
+  const habitualesNuevos = masReciente.myday_habitual
+    ? (typeof masReciente.myday_habitual === 'string' ? masReciente.myday_habitual : JSON.stringify(masReciente.myday_habitual))
+    : habitualesPrevios;
+
+  localStorage.setItem('myday_tasks', tareasNuevas);
+  localStorage.setItem('myday_habitual', habitualesNuevos);
+
   if (typeof masReciente.myday_quick_notes === 'string') {
-    localStorage.setItem('myday_quick_notes', masReciente.myday_quick_notes);
     const notesEl = document.getElementById('desktop-quick-notes');
-    if (notesEl) notesEl.value = masReciente.myday_quick_notes;
+    if (notesEl && document.activeElement !== notesEl) {
+      localStorage.setItem('myday_quick_notes', masReciente.myday_quick_notes);
+      notesEl.value = masReciente.myday_quick_notes;
+    }
   }
+
   if (masReciente.myday_theme) {
     localStorage.setItem('myday_theme', masReciente.myday_theme);
   }
 
-  if (tsGithub > tsLocal) {
+  if (vieneDeGithub) {
+    ultimoTsGithubAplicado = tsGithub;
     console.log('☁️ Sincronizado desde Jarvis / GitHub');
     autosaveAlServidor();
   }
 
-  renderizarCalendario();
-  renderizarHabitualesSidebar();
+  if (!soloSiHayCambios || tareasNuevas !== tareasPrevias || habitualesNuevos !== habitualesPrevios) {
+    renderizarCalendario();
+    renderizarHabitualesSidebar();
+  }
 }
 
 // =======================================================
