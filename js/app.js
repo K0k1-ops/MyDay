@@ -7,7 +7,17 @@ let filtroCategoriaActual = 'todas';
 const HORA_INICIO_GRID = 7;
 const HORA_FIN_GRID = 23;
 
+function getFechaHoyISO() {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+  cargarBackupServidor();
+
   if (window.lucide) lucide.createIcons();
 
   if ('serviceWorker' in navigator) {
@@ -23,7 +33,6 @@ document.addEventListener('DOMContentLoaded', () => {
   autoScrollAHoraActual();
   inicializarPaletaComandos();
 
-  // Actualizar la línea de hora actual cada 30 segundos
   setInterval(() => {
     renderizarIndicadorHoraActual();
   }, 30000);
@@ -215,6 +224,26 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // =======================================================
+// CARGAR DATOS DEL SERVIDOR AL ABRIR LA WEB
+// =======================================================
+function cargarBackupServidor() {
+  fetch('/myself_backup.json')
+    .then(res => {
+      if (!res.ok) throw new Error('No hay backup en servidor');
+      return res.json();
+    })
+    .then(data => {
+      if (data.myday_tasks) localStorage.setItem('myday_tasks', typeof data.myday_tasks === 'string' ? data.myday_tasks : JSON.stringify(data.myday_tasks));
+      if (data.myday_habitual) localStorage.setItem('myday_habitual', typeof data.myday_habitual === 'string' ? data.myday_habitual : JSON.stringify(data.myday_habitual));
+      if (data.myday_quick_notes) localStorage.setItem('myday_quick_notes', data.myday_quick_notes);
+      if (data.myday_theme) localStorage.setItem('myday_theme', data.myday_theme);
+      renderizarCalendario();
+      renderizarHabitualesSidebar();
+    })
+    .catch(err => console.log('Usando datos de localStorage:', err));
+}
+
+// =======================================================
 // AUTO-GUARDADO AL SERVIDOR LOCAL (PYTHON API)
 // =======================================================
 function autosaveAlServidor() {
@@ -234,7 +263,7 @@ function autosaveAlServidor() {
   })
   .then(res => res.json())
   .then(data => console.log('📁 Auto-guardado en myself_backup.json:', data))
-  .catch(err => console.warn('Servidor sin endpoint POST (asegúrate de usar python3 server.py):', err));
+  .catch(err => console.warn('Servidor sin endpoint POST:', err));
 }
 
 // =======================================================
@@ -287,12 +316,12 @@ function renderizarIndicadorHoraActual() {
   const prevLine = document.querySelector('.current-time-line');
   if (prevLine) prevLine.remove();
 
-  const hoyStr = new Date().toISOString().slice(0, 10);
+  const hoyStr = getFechaHoyISO();
   const columnaHoy = document.querySelector(`.grid-day-column[data-date="${hoyStr}"]`);
   if (!columnaHoy) return;
 
   const ahora = new Date();
-  const minActuales = ahora.getHours() * 60 + ahora.getMinutes();
+  const minActuales = me = ahora.getHours() * 60 + ahora.getMinutes();
   const minInicioGrid = HORA_INICIO_GRID * 60;
 
   if (minActuales >= minInicioGrid && minActuales <= (HORA_FIN_GRID + 1) * 60) {
@@ -414,7 +443,6 @@ function renderizarCalendario() {
 
   const hoyStr = new Date().toISOString().slice(0, 10);
 
-  // 1. Cabecera Días
   const emptyCorner = document.createElement('div');
   emptyCorner.className = 'grid-header-cell';
   emptyCorner.style.fontWeight = '700';
@@ -435,7 +463,6 @@ function renderizarCalendario() {
     gridHeader.appendChild(headerDia);
   });
 
-  // 2. Columna Horas
   const timeColumn = document.createElement('div');
   timeColumn.className = 'grid-time-column';
   for (let h = HORA_INICIO_GRID; h <= HORA_FIN_GRID; h++) {
@@ -446,7 +473,6 @@ function renderizarCalendario() {
   }
   gridBody.appendChild(timeColumn);
 
-  // 3. Obtener Datos
   const tareas = JSON.parse(localStorage.getItem('myday_tasks') || '[]');
   const habituales = JSON.parse(localStorage.getItem('myday_habitual') || '[]');
   const minInicioGrid = HORA_INICIO_GRID * 60;
@@ -460,7 +486,6 @@ function renderizarCalendario() {
     dayColumn.className = `grid-day-column ${esPasado ? 'is-past' : ''}`;
     dayColumn.setAttribute('data-date', fechaISO);
 
-    // EVENTOS DE DRAG & DROP SOBRE LA COLUMNA DEL DÍA
     dayColumn.addEventListener('dragover', (e) => {
       e.preventDefault();
       dayColumn.classList.add('drag-over');
@@ -544,9 +569,8 @@ function renderizarCalendario() {
 
     const eventosDia = [];
 
-    // Rutinas
     if (filtroCategoriaActual === 'todas' || filtroCategoriaActual === 'rutinas') {
-      const habs = habituales.filter(hab => hab.days && hab.days.includes(String(dayOfWeek)));
+      const habs = habituales.filter(hab => hab.days && hab.days.map(String).includes(String(dayOfWeek)));
       habs.forEach(hab => {
         const startMin = timeToMinutes(hab.startTime || '10:00');
         const endMin = timeToMinutes(hab.endTime || '11:00');
@@ -564,7 +588,6 @@ function renderizarCalendario() {
       });
     }
 
-    // Tareas Puntuales
     if (filtroCategoriaActual !== 'rutinas') {
       let ts = tareas.filter(t => t.date === fechaISO);
       if (filtroCategoriaActual !== 'todas') {
@@ -581,6 +604,7 @@ function renderizarCalendario() {
             category: t.category || 'personal',
             completed: t.completed,
             title: t.title,
+            description: t.description || '',
             startTime: sTime,
             endTime: eTime,
             startMin,
@@ -627,15 +651,31 @@ function renderizarCalendario() {
           item.classList.remove('dragging');
         });
 
+        const escapeHTML = (str) => String(str || '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+
         const prefix = ev.type === 'habitual' ? '🔄' : (ev.category === 'estudios' ? '📚' : '👤');
         const isChecked = ev.completed ? '✓' : '';
+        const tieneDesc = Boolean(ev.description && ev.description.trim());
+
+        if (tieneDesc) {
+          item.title = `${ev.title} (${ev.startTime} - ${ev.endTime})\n📝 ${ev.description}`;
+        }
+
+        const descEnTarjeta = (tieneDesc && heightPx >= 45)
+          ? `<div style="font-size:0.72rem; opacity:0.88; margin-top:3px; line-height:1.25; display:-webkit-box; -webkit-line-clamp:${heightPx >= 90 ? 3 : 1}; -webkit-box-orient:vertical; overflow:hidden; text-overflow:ellipsis;">${escapeHTML(ev.description)}</div>`
+          : '';
 
         item.innerHTML = `
           <div style="display:flex; align-items:center; gap:4px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
             ${ev.type === 'task' ? `<span class="task-check-btn" title="Completar">${isChecked}</span>` : ''}
-            <span>${prefix} ${ev.title}</span>
+            <span>${prefix} ${escapeHTML(ev.title)}</span>
           </div>
-          <div style="font-size:0.7rem; opacity:0.9; margin-top:2px;">${ev.startTime} - ${ev.endTime}</div>
+          <div style="font-size:0.7rem; opacity:0.9; margin-top:2px;">${ev.startTime} - ${ev.endTime}${tieneDesc && heightPx < 45 ? ' · 📝' : ''}</div>
+          ${descEnTarjeta}
         `;
 
         const checkBtn = item.querySelector('.task-check-btn');
@@ -687,7 +727,7 @@ function renderizarHabitualesSidebar() {
   const nombresDias = { "1": "Lun", "2": "Mar", "3": "Mié", "4": "Jue", "5": "Vie", "6": "Sáb", "0": "Dom" };
 
   listContainer.innerHTML = habituales.map(h => {
-    const diasTxt = (h.days || []).map(d => nombresDias[d] || d).join(', ') || 'Sin días';
+    const diasTxt = (h.days || []).map(d => nombresDias[String(d)] || d).join(', ') || 'Sin días';
     return `
       <div style="background:var(--bg-primary); border:1px solid var(--border-color); padding:8px 10px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; cursor:pointer;" onclick="abrirModalHabitualDirecto('${h.id}')">
         <div>
@@ -828,6 +868,7 @@ function abrirModalTarea(tareaExistente = {}) {
   const modalTitle = document.getElementById('modal-task-header-title');
   const inputId = document.getElementById('task-id');
   const inputTitle = document.getElementById('task-title-input');
+  const inputDesc = document.getElementById('task-desc-input');
   const inputCategory = document.getElementById('task-category-input');
   const inputDate = document.getElementById('task-date-input');
   const inputStart = document.getElementById('task-start-input');
@@ -885,6 +926,7 @@ function abrirModalTarea(tareaExistente = {}) {
     modalTitle.innerText = "Editar Tarea";
     inputId.value = tareaExistente.id;
     inputTitle.value = tareaExistente.title || '';
+    if (inputDesc) inputDesc.value = tareaExistente.description || '';
     if (inputCategory) inputCategory.value = tareaExistente.category || 'personal';
     inputDate.value = fechaSeleccionada;
     inputStart.value = startDefault;
@@ -894,6 +936,7 @@ function abrirModalTarea(tareaExistente = {}) {
     modalTitle.innerText = "Nueva Tarea";
     inputId.value = '';
     inputTitle.value = '';
+    if (inputDesc) inputDesc.value = '';
     if (inputCategory) inputCategory.value = 'personal';
     inputDate.value = fechaSeleccionada;
     inputStart.value = startDefault;
@@ -922,6 +965,7 @@ function configurarModalTareaForm() {
       e.preventDefault();
       const id = document.getElementById('task-id').value;
       const title = document.getElementById('task-title-input').value.trim();
+      const description = document.getElementById('task-desc-input') ? document.getElementById('task-desc-input').value.trim() : '';
       const category = document.getElementById('task-category-input') ? document.getElementById('task-category-input').value : 'personal';
       const date = document.getElementById('task-date-input').value;
       const startTime = document.getElementById('task-start-input').value;
@@ -937,12 +981,13 @@ function configurarModalTareaForm() {
       if (id) {
         const idx = tareas.findIndex(t => t.id === id);
         if (idx !== -1) {
-          tareas[idx] = { ...tareas[idx], title, category, date, startTime, endTime, time: startTime };
+          tareas[idx] = { ...tareas[idx], title, description, category, date, startTime, endTime, time: startTime };
         }
       } else {
         tareas.push({
           id: Date.now().toString(),
           title,
+          description,
           category,
           date,
           startTime,
@@ -986,18 +1031,12 @@ function inicializarPaletaComandos() {
   paletteContainer.className = 'modal-backdrop hidden';
   paletteContainer.innerHTML = `
     <div class="command-palette-modal" style="background:var(--bg-primary, #1e1e1e); border:1px solid var(--border-color, #444); border-radius:12px; width:90%; max-width:550px; margin:10vh auto; padding:16px; box-shadow:0 20px 40px rgba(0,0,0,0.5); color:var(--text-primary, #ffffff); position:relative;">
-      
-      <!-- CABECERA DE LA PALETA CON BOTÓN DE CIERRE (X) -->
       <div style="display:flex; align-items:center; gap:10px; border-bottom:1px solid var(--border-color, #333); padding-bottom:10px;">
         <span style="font-size:1.2rem;">🔍</span>
         <input type="text" id="cmd-input" placeholder="Buscar tarea, rutina o comando..." style="width:100%; border:none; outline:none; background:transparent; font-size:1rem; color:inherit;" />
         <kbd style="font-size:0.75rem; background:var(--bg-secondary, #333); color:var(--text-primary, #fff); padding:2px 6px; border-radius:4px;">ESC</kbd>
-        
-        <!-- CRUZ DE CERRAR -->
         <button id="cmd-btn-close" type="button" style="background:transparent; border:none; color:var(--text-secondary, #aaa); font-size:1.4rem; cursor:pointer; padding:0 4px; line-height:1;" title="Cerrar (Esc)">&times;</button>
       </div>
-
-      <!-- LISTA DE RESULTADOS -->
       <div id="cmd-results" style="max-height:300px; overflow-y:auto; margin-top:10px; display:flex; flex-direction:column; gap:6px;">
       </div>
     </div>
@@ -1020,7 +1059,6 @@ function inicializarPaletaComandos() {
     backdrop.classList.add('hidden');
   };
 
-  // Botón X de cerrar
   if (btnClose) {
     btnClose.onclick = (e) => {
       e.stopPropagation();
@@ -1028,7 +1066,6 @@ function inicializarPaletaComandos() {
     };
   }
 
-  // Cerrar al pulsar Ctrl + K de nuevo
   document.addEventListener('keydown', (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
       e.preventDefault();
@@ -1037,7 +1074,6 @@ function inicializarPaletaComandos() {
     }
   });
 
-  // Cerrar al hacer clic en el fondo oscuro fuera del cuadro
   backdrop.addEventListener('click', (e) => {
     if (e.target === backdrop) cerrarPaleta();
   });
@@ -1068,11 +1104,15 @@ function inicializarPaletaComandos() {
     });
 
     if (query.length > 0) {
-      const tareasCoincidentes = tareas.filter(t => t.title.toLowerCase().includes(query));
+      const tareasCoincidentes = tareas.filter(t =>
+        t.title.toLowerCase().includes(query) ||
+        (t.description && t.description.toLowerCase().includes(query))
+      );
       tareasCoincidentes.forEach(t => {
         const item = document.createElement('div');
-        item.style.cssText = 'padding:10px 14px; border-radius:6px; cursor:pointer; border:1px solid var(--border-color, #444); color:var(--text-primary, #ffffff); background:var(--bg-primary, #1e1e1e); display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;';
-        item.innerHTML = `<span>📌 ${t.title}</span><small style="opacity:0.7;">${t.date || 'Tarea'}</small>`;
+        item.style.cssText = 'padding:10px 14px; border-radius:6px; cursor:pointer; border:1px solid var(--border-color, #444); color:var(--text-primary, #ffffff); background:var(--bg-primary, #1e1e1e); display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:4px;';
+        const descPreview = t.description ? `<div style="font-size:0.75rem; opacity:0.75; margin-top:2px;">${t.description}</div>` : '';
+        item.innerHTML = `<div><div>📌 ${t.title}</div>${descPreview}</div><small style="opacity:0.7; white-space:nowrap;">${t.date || 'Tarea'}</small>`;
         item.onclick = () => { cerrarPaleta(); abrirModalTarea(t); };
         results.appendChild(item);
       });
